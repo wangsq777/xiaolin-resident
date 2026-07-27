@@ -1,0 +1,15 @@
+.build/
+.swiftpm/
+DerivedData/
+dist/
+node_modules/
+npm-debug.log*
+artifacts/
+*.xcuserstate
+xcuserdata/
+
+# macOS
+.DS_Store
+
+# Editor / tool caches
+.zcode/

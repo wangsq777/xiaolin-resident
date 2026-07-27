@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self';">
+    <title>小林驻留中 · 桌宠 BGM</title>
+    <link rel="stylesheet" href="./pet.css">
+    <script src="./pet.js" defer></script>
+  </head>
+  <body>
+    <main id="petShell" class="pet-shell idle" title="拖动可移动；右键打开主配置页或退出">
+      <div id="petCharacter" class="pet-character" role="img" aria-label="拿着吉他唱歌的像素风小林">
+        <img src="./assets/chibi-lam-singing.png" alt="" draggable="false">
+      </div>
+
+      <section class="song-bubble" aria-label="歌曲与播放控制">
+        <div id="songCopy" class="song-copy" title="双击打开主配置页">
+          <p id="petStatus">等待 BGM</p>
+          <h1 id="petTrackTitle">BGM 文件夹还是空的</h1>
+          <span id="petTrackArtist">右键打开 BGM 文件夹</span>
+        </div>
+
+        <div class="pet-controls" aria-label="播放控制">
+          <button id="petPreviousButton" type="button" aria-label="上一首" disabled>⏮</button>
+          <button id="petPlayPauseButton" class="pet-primary-control" type="button" aria-label="播放或暂停" disabled>▶</button>
+          <button id="petNextButton" type="button" aria-label="下一首" disabled>⏭</button>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
