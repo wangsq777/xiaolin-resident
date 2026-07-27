@@ -204,3 +204,66 @@ button {
     animation: none;
   }
 }
+
+/* hidden 属性强制生效（避免被 display:flex 等覆盖） */
+[hidden] {
+  display: none !important;
+}
+
+/* 提醒气泡：复用 song-bubble 玻璃质感，紧凑布局 */
+.reminder-bubble {
+  -webkit-app-region: no-drag;
+  margin: 6px 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(182, 148, 239, 0.35);
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(182, 148, 239, 0.18), rgba(152, 104, 232, 0.12));
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.22), inset 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.reminder-message {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #f6f3fb;
+}
+
+.reminder-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.reminder-action {
+  -webkit-app-region: no-drag;
+  flex: 1;
+  min-height: 30px;
+  padding: 0 8px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #f6f3fb;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.reminder-action:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.reminder-action.primary {
+  border-color: rgba(182, 148, 239, 0.6);
+  background: linear-gradient(145deg, rgba(182, 148, 239, 0.4), rgba(152, 104, 232, 0.3));
+  color: #fff;
+}
+
+.reminder-action.primary:hover {
+  background: linear-gradient(145deg, rgba(182, 148, 239, 0.55), rgba(152, 104, 232, 0.45));
+}
+
+/* working 状态用唱歌动画 */
+.pet-shell.working .pet-character {
+  animation: pet-sing 0.92s ease-in-out infinite;
+}

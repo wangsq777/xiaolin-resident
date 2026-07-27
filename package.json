@@ -1,8 +1,8 @@
 {
   "name": "xiaolin-resident",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
-  "description": "跨平台本地 BGM 桌宠",
+  "description": "跨平台关怀型桌宠（Electron）",
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",

@@ -8,6 +8,8 @@
     hasNowPlayingItem: false,
     isPlaying: false
   };
+  let careConfig = null;
+  let unifiedState = null;
 
   const player = new window.LocalBgmController({
     onStateChange: handlePlayerState,
@@ -25,22 +27,188 @@
     }
 
     try {
-      const snapshot = await desktop.bgm.list();
-      await applyLibrarySnapshot(snapshot, { autoPlayIfIdle: true });
+      // 先加载关怀设置，决定 BGM 是否启用
+      careConfig = await desktop.care.get();
+      renderCareSettings();
+
+      // 监听 main 广播的统一状态（角色形象 + 提醒）
+      desktop.state.onUpdate(handleStateUpdate);
+
+      // BGM 启用时才加载曲目列表
+      if (careConfig.bgm.enabled) {
+        const snapshot = await desktop.bgm.list();
+        await applyLibrarySnapshot(snapshot, { autoPlayIfIdle: true });
+      } else {
+        // BGM 关闭：不加载列表，直接发布空状态
+        publishPetState();
+      }
     } catch (error) {
       showToast(normalizeError(error), 'error');
     }
   }
 
   function bindEvents() {
-    elements.openBgmFolderButton.addEventListener('click', openBgmFolder);
-    elements.rescanBgmButton.addEventListener('click', rescanBgmFolder);
-    elements.previousButton.addEventListener('click', () => runPlayerAction(() => player.previous()));
-    elements.playPauseButton.addEventListener('click', () => runPlayerAction(() => player.togglePlayback()));
-    elements.nextButton.addEventListener('click', () => runPlayerAction(() => player.next()));
+    // BGM 控件
+    elements.openBgmFolderButton?.addEventListener('click', openBgmFolder);
+    elements.rescanBgmButton?.addEventListener('click', rescanBgmFolder);
+    elements.previousButton?.addEventListener('click', () => runPlayerAction(() => player.previous()));
+    elements.playPauseButton?.addEventListener('click', () => runPlayerAction(() => player.togglePlayback()));
+    elements.nextButton?.addEventListener('click', () => runPlayerAction(() => player.next()));
     desktop?.pet?.onCommand(handlePetCommand);
     desktop?.bgm?.onChanged(() => refreshAfterFolderChange());
+
+    // 关怀中心：状态切换
+    elements.stateSwitcher?.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-state]');
+      if (!button) return;
+      patchCare({ currentState: button.dataset.state });
+    });
+
+    // 喝水提醒设置
+    elements.drinkEnabled?.addEventListener('change', (event) => {
+      patchCare({ reminders: { drink: { enabled: event.target.checked } } });
+    });
+    elements.drinkInterval?.addEventListener('change', (event) => {
+      const value = Number(event.target.value);
+      if (value > 0) patchCare({ reminders: { drink: { intervalMinutes: value } } });
+    });
+    elements.drinkSnooze?.addEventListener('change', (event) => {
+      const value = Number(event.target.value);
+      if (value > 0) patchCare({ reminders: { drink: { snoozeMinutes: value } } });
+    });
+
+    // 安静时段
+    elements.quietEnabled?.addEventListener('change', (event) => {
+      patchCare({ quietHours: { enabled: event.target.checked } });
+    });
+    elements.quietStart?.addEventListener('change', (event) => {
+      patchCare({ quietHours: { start: event.target.value } });
+    });
+    elements.quietEnd?.addEventListener('change', (event) => {
+      patchCare({ quietHours: { end: event.target.value } });
+    });
+
+    // BGM 开关
+    elements.bgmEnabled?.addEventListener('change', async (event) => {
+      const enabled = event.target.checked;
+      await patchCare({ bgm: { enabled } });
+      if (enabled) {
+        // 刚启用：加载曲目
+        try {
+          const snapshot = await desktop.bgm.list();
+          await applyLibrarySnapshot(snapshot, { autoPlayIfIdle: true });
+        } catch (error) {
+          showToast(normalizeError(error), 'error');
+        }
+      } else {
+        // 关闭：停止播放
+        player.setPlaylist([]);
+        renderLibrary();
+        publishPetState();
+      }
+      renderBgmSection();
+    });
   }
+
+  // ============ 关怀设置 ============
+
+  async function patchCare(partial) {
+    try {
+      careConfig = await desktop.care.patch(partial);
+      renderCareSettings();
+    } catch (error) {
+      showToast(normalizeError(error), 'error');
+    }
+  }
+
+  function renderCareSettings() {
+    if (!careConfig) return;
+
+    // 状态切换高亮
+    if (elements.stateSwitcher) {
+      elements.stateSwitcher.querySelectorAll('[data-state]').forEach((button) => {
+        button.classList.toggle('active', button.dataset.state === careConfig.currentState);
+      });
+    }
+
+    // 喝水提醒
+    if (elements.drinkEnabled) elements.drinkEnabled.checked = careConfig.reminders.drink.enabled;
+    if (elements.drinkInterval) elements.drinkInterval.value = careConfig.reminders.drink.intervalMinutes;
+    if (elements.drinkSnooze) elements.drinkSnooze.value = careConfig.reminders.drink.snoozeMinutes;
+
+    // 安静时段
+    if (elements.quietEnabled) elements.quietEnabled.checked = careConfig.quietHours.enabled;
+    if (elements.quietStart) elements.quietStart.value = careConfig.quietHours.start;
+    if (elements.quietEnd) elements.quietEnd.value = careConfig.quietHours.end;
+
+    // BGM 开关
+    if (elements.bgmEnabled) elements.bgmEnabled.checked = careConfig.bgm.enabled;
+    renderBgmSection();
+  }
+
+  function renderBgmSection() {
+    const enabled = careConfig?.bgm?.enabled;
+    const bgmSection = elements.bgmSection;
+    if (bgmSection) bgmSection.hidden = !enabled;
+  }
+
+  // main 广播的统一状态：更新角色舞台形象
+  function handleStateUpdate(state) {
+    unifiedState = state;
+    renderCharacterStage();
+  }
+
+  function renderCharacterStage() {
+    if (!unifiedState) return;
+    const img = elements.chibi?.querySelector('img');
+    if (img && unifiedState.character?.imageSrc) {
+      if (img.getAttribute('src') !== unifiedState.character.imageSrc) {
+        img.setAttribute('src', unifiedState.character.imageSrc);
+      }
+    }
+    // 角色动画状态
+    if (elements.chibi) {
+      const stateKey = unifiedState.character?.stateKey || 'default';
+      elements.chibi.classList.toggle('playing', stateKey === 'working' || stateKey === 'reminder_drink');
+      elements.chibi.classList.toggle('idle', !unifiedState.reminder && stateKey !== 'working');
+    }
+    // 角色台词
+    if (elements.characterSpeech) {
+      if (unifiedState.reminder) {
+        elements.characterSpeech.textContent = unifiedState.reminder.message;
+      } else {
+        elements.characterSpeech.textContent = unifiedState.statusText || '在这里陪你';
+      }
+    }
+    // 角色形象就绪状态展示
+    renderAssetStatus();
+  }
+
+  async function renderAssetStatus() {
+    if (!elements.assetStatus) return;
+    try {
+      const assets = await desktop.care.getAssetStatus();
+      const labels = {
+        'default.png': '默认',
+        'working.png': '工作',
+        'leisure.png': '休闲',
+        'drinking.png': '喝水',
+        'stretching.png': '活动',
+        'eyes-rest.png': '护眼',
+        'sleeping.png': '睡眠',
+        'happy.png': '开心'
+      };
+      elements.assetStatus.innerHTML = assets.map((a) => {
+        const label = labels[a.file] || a.file;
+        const cls = a.available ? 'asset-ready' : 'asset-missing';
+        return `<span class="asset-chip ${cls}" title="${a.file}">${label}${a.available ? '' : '·缺'}</span>`;
+      }).join('');
+    } catch {
+      // 静默失败
+    }
+  }
+
+  // ============ BGM 播放（保留原逻辑） ============
 
   async function openBgmFolder() {
     try {
@@ -77,7 +245,8 @@
     player.setPlaylist(snapshot.tracks);
     renderLibrary();
 
-    if (autoPlayIfIdle && snapshot.tracks.length > 0 && !player.currentTrack()) {
+    // 仅在 BGM 启用时自动播放
+    if (careConfig?.bgm?.enabled && autoPlayIfIdle && snapshot.tracks.length > 0 && !player.currentTrack()) {
       await runPlayerAction(() => player.playIndex(0));
     }
     publishPetState();
@@ -111,7 +280,6 @@
         : playerState.hasTracks
           ? '准备播放'
           : '等待 BGM';
-    renderCharacterState();
     renderTrackSelection();
     publishPetState();
   }
@@ -121,7 +289,6 @@
     elements.trackTitle.textContent = track?.title || '还没有播放歌曲';
     elements.trackArtist.textContent = track?.artist || '将音频放进项目的 BGM 文件夹';
     renderTrackSelection();
-    renderCharacterState();
     publishPetState();
   }
 
@@ -142,7 +309,6 @@
     });
     elements.bgmLibrary.append(fragment);
     renderTrackSelection();
-    renderCharacterState();
   }
 
   function createTrackRow(track, index) {
@@ -181,30 +347,14 @@
     });
   }
 
-  function renderCharacterState() {
-    elements.chibi.classList.toggle('playing', playerState.isPlaying);
-    elements.chibi.classList.toggle('paused', playerState.hasNowPlayingItem && !playerState.isPlaying);
-    elements.chibi.classList.toggle('idle', !playerState.hasNowPlayingItem);
-    elements.musicNotes.classList.toggle('visible', playerState.isPlaying);
-
-    if (playerState.isPlaying) {
-      elements.characterSpeech.textContent = `${currentTrack?.title || '这一首'}，这一段我来唱。`;
-    } else if (playerState.hasNowPlayingItem) {
-      elements.characterSpeech.textContent = '先停在这里。想继续时按一下播放。';
-    } else if (library.tracks.length > 0) {
-      elements.characterSpeech.textContent = '歌都在了。选一首，或者让我从第一首开始。';
-    } else {
-      elements.characterSpeech.textContent = '把歌放进 BGM 文件夹，我就有东西唱了。';
-    }
-  }
-
+  // 主窗只上报 BGM 部分，关怀部分由 main 统一广播
   function publishPetState() {
     desktop?.pet?.publishState({
       hasTracks: library.tracks.length > 0,
       hasNowPlayingItem: playerState.hasNowPlayingItem,
       isPlaying: playerState.isPlaying,
       title: currentTrack?.title || (library.tracks.length > 0 ? '本地 BGM 已准备好' : 'BGM 文件夹还是空的'),
-      artist: currentTrack?.artist || (library.tracks.length > 0 ? `${library.tracks.length} 首歌已就绪` : '右键打开 BGM 文件夹')
+      artist: currentTrack?.artist || (library.tracks.length > 0 ? `${library.tracks.length} 首歌已就绪` : '右键打开关怀中心')
     });
   }
 
@@ -228,10 +378,16 @@
 
   function collectElements() {
     const ids = [
+      // BGM 原有
       'libraryBadge', 'libraryBadgeText', 'musicNotes', 'chibi', 'characterSpeech',
       'playerStatus', 'trackTitle', 'trackArtist', 'previousButton', 'playPauseButton',
       'nextButton', 'libraryTitle', 'bgmFolderPath', 'openBgmFolderButton',
-      'rescanBgmButton', 'emptyLibrary', 'bgmLibrary', 'toast'
+      'rescanBgmButton', 'emptyLibrary', 'bgmLibrary', 'toast',
+      // 关怀中心新增
+      'careCenter', 'stateSwitcher', 'drinkReminderCard',
+      'drinkEnabled', 'drinkInterval', 'drinkSnooze',
+      'quietEnabled', 'quietStart', 'quietEnd',
+      'bgmEnabled', 'bgmSection', 'assetStatus'
     ];
     return Object.fromEntries(ids.map((id) => [id, document.getElementById(id)]));
   }

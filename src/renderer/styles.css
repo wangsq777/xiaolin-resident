@@ -1350,3 +1350,189 @@ code {
     scroll-behavior: auto !important;
   }
 }
+
+/* ============ 关怀中心 ============ */
+
+[hidden] {
+  display: none !important;
+}
+
+.care-card {
+  padding: 18px 20px;
+}
+
+.care-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.care-card-header h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.care-card-header .eyebrow {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.care-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.care-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.care-field span {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.care-field input {
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.care-field input:focus {
+  border-color: var(--purple);
+}
+
+.care-field input[type="time"] {
+  color-scheme: dark;
+}
+
+.care-hint {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* 开关 */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 42px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.switch-track {
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.12);
+  transition: background 0.2s ease;
+  cursor: pointer;
+}
+
+.switch-track::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s ease;
+}
+
+.switch input:checked + .switch-track {
+  background: var(--purple-strong);
+}
+
+.switch input:checked + .switch-track::before {
+  transform: translateX(18px);
+}
+
+/* 状态切换 */
+.state-switcher {
+  display: flex;
+  gap: 8px;
+}
+
+.state-option {
+  flex: 1;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.state-option:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+
+.state-option.active {
+  border-color: var(--purple);
+  background: linear-gradient(145deg, rgba(182, 148, 239, 0.25), rgba(152, 104, 232, 0.15));
+  color: #fff;
+}
+
+/* 素材就绪状态 */
+.asset-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 0 4px;
+}
+
+.asset-chip {
+  padding: 3px 9px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.asset-chip.asset-ready {
+  background: rgba(121, 217, 167, 0.18);
+  color: var(--green);
+}
+
+.asset-chip.asset-missing {
+  background: rgba(245, 180, 109, 0.15);
+  color: var(--orange);
+}
+
+.bgm-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}

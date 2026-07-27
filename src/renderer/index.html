@@ -7,7 +7,7 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' xiaolin-bgm:;"
     >
-    <title>小林驻留中 · 本地 BGM</title>
+    <title>小林驻留中 · 关怀中心</title>
     <link rel="stylesheet" href="./styles.css">
     <script src="./local-bgm-controller.js" defer></script>
     <script src="./app.js" defer></script>
@@ -16,72 +16,144 @@
     <div class="ambient ambient-one"></div>
     <div class="ambient ambient-two"></div>
 
-    <main class="app-shell">
+    <main id="careCenter" class="app-shell">
       <header class="topbar">
         <div>
-          <p class="eyebrow">LOCAL BGM · DESKTOP COMPANION</p>
+          <p class="eyebrow">CARE COMPANION · DESKTOP PET</p>
           <h1>小林驻留中</h1>
         </div>
 
         <div class="topbar-actions">
           <div id="libraryBadge" class="status-badge pending">
             <span class="status-dot"></span>
-            <span id="libraryBadgeText">正在扫描 BGM</span>
+            <span id="libraryBadgeText">加载中</span>
           </div>
         </div>
       </header>
 
       <section class="hero-grid">
-        <section class="character-stage" aria-label="Q 版小林动画区域">
+        <section class="character-stage" aria-label="小林状态区域">
           <div id="musicNotes" class="music-notes" aria-hidden="true">
             <span>♪</span><span>♫</span><span>♩</span>
           </div>
 
-          <div id="chibi" class="chibi pixel-chibi idle" role="img" aria-label="像素风小林安静等待 BGM">
-            <img src="./assets/chibi-lam-pixel.png" alt="" draggable="false">
+          <div id="chibi" class="chibi pixel-chibi idle" role="img" aria-label="像素风小林">
+            <img src="./assets/character-states/default.png" alt="" draggable="false">
           </div>
 
-          <div id="characterSpeech" class="speech">把歌放进 BGM 文件夹，我就有东西唱了。</div>
+          <div id="characterSpeech" class="speech">在这里陪你。</div>
+          <div id="assetStatus" class="asset-status" aria-label="素材就绪状态"></div>
         </section>
 
         <section class="player-column">
-          <article class="glass-card now-playing-card">
-            <div id="artwork" class="artwork-placeholder" aria-label="本地 BGM">♪</div>
-            <div class="track-copy">
-              <p id="playerStatus" class="eyebrow">等待 BGM</p>
-              <h2 id="trackTitle">还没有播放歌曲</h2>
-              <p id="trackArtist">将音频放进项目的 BGM 文件夹</p>
-            </div>
-
-            <div class="player-controls">
-              <button id="previousButton" type="button" aria-label="上一首" disabled>⏮</button>
-              <button id="playPauseButton" class="primary-control" type="button" aria-label="播放或暂停" disabled>▶</button>
-              <button id="nextButton" type="button" aria-label="下一首" disabled>⏭</button>
-            </div>
-          </article>
-
-          <article class="glass-card local-library-card">
-            <header class="library-toolbar">
-              <div>
-                <p class="eyebrow">本地 BGM 文件夹</p>
-                <h2 id="libraryTitle">等待扫描</h2>
-                <p id="bgmFolderPath" class="library-path"></p>
-              </div>
-              <div class="library-actions">
-                <button id="openBgmFolderButton" class="quiet-button" type="button">打开 BGM 文件夹</button>
-                <button id="rescanBgmButton" class="primary-button" type="button">重新扫描</button>
-              </div>
+          <!-- 状态切换 -->
+          <article class="glass-card care-card">
+            <header class="care-card-header">
+              <h2>当前状态</h2>
+              <p class="eyebrow">手动选择，桌宠会跟着变</p>
             </header>
-
-            <div id="emptyLibrary" class="empty-library">
-              <span aria-hidden="true">♫</span>
-              <h3>BGM 文件夹还没有歌曲</h3>
-              <p>放入 MP3、M4A、AAC、WAV、FLAC、OGG 或 OPUS 文件。音频只在本机播放，不需要任何开发者会员。</p>
-              <small>推荐文件名：林家谦 - 歌名.mp3</small>
+            <div id="stateSwitcher" class="state-switcher" role="radiogroup" aria-label="状态切换">
+              <button type="button" class="state-option" data-state="leisure">休闲</button>
+              <button type="button" class="state-option" data-state="working">工作</button>
+              <button type="button" class="state-option" data-state="do_not_disturb">免打扰</button>
             </div>
-
-            <div id="bgmLibrary" class="local-track-list" aria-live="polite"></div>
           </article>
+
+          <!-- 喝水提醒 -->
+          <article id="drinkReminderCard" class="glass-card care-card">
+            <header class="care-card-header">
+              <h2>喝水提醒</h2>
+              <label class="switch">
+                <input id="drinkEnabled" type="checkbox">
+                <span class="switch-track"></span>
+              </label>
+            </header>
+            <div class="care-fields">
+              <label class="care-field">
+                <span>提醒间隔（分钟）</span>
+                <input id="drinkInterval" type="number" min="1" max="480" step="5">
+              </label>
+              <label class="care-field">
+                <span>稍后提醒（分钟）</span>
+                <input id="drinkSnooze" type="number" min="1" max="120" step="1">
+              </label>
+            </div>
+          </article>
+
+          <!-- 安静时段 -->
+          <article class="glass-card care-card">
+            <header class="care-card-header">
+              <h2>安静时段</h2>
+              <label class="switch">
+                <input id="quietEnabled" type="checkbox">
+                <span class="switch-track"></span>
+              </label>
+            </header>
+            <div class="care-fields">
+              <label class="care-field">
+                <span>开始</span>
+                <input id="quietStart" type="time">
+              </label>
+              <label class="care-field">
+                <span>结束</span>
+                <input id="quietEnd" type="time">
+              </label>
+            </div>
+            <p class="care-hint">安静时段内不弹出普通提醒，结束后也不补发。</p>
+          </article>
+
+          <!-- BGM 开关 -->
+          <article class="glass-card care-card">
+            <header class="care-card-header">
+              <h2>BGM 氛围音乐</h2>
+              <label class="switch">
+                <input id="bgmEnabled" type="checkbox">
+                <span class="switch-track"></span>
+              </label>
+            </header>
+            <p class="care-hint">关闭时桌宠只做陪伴与提醒；启用后才显示音乐控制。</p>
+          </article>
+
+          <!-- BGM 区块（启用时才显示） -->
+          <div id="bgmSection" class="bgm-section" hidden>
+            <article class="glass-card now-playing-card">
+              <div id="artwork" class="artwork-placeholder" aria-label="本地 BGM">♪</div>
+              <div class="track-copy">
+                <p id="playerStatus" class="eyebrow">等待 BGM</p>
+                <h2 id="trackTitle">还没有播放歌曲</h2>
+                <p id="trackArtist">将音频放进项目的 BGM 文件夹</p>
+              </div>
+
+              <div class="player-controls">
+                <button id="previousButton" type="button" aria-label="上一首" disabled>⏮</button>
+                <button id="playPauseButton" class="primary-control" type="button" aria-label="播放或暂停" disabled>▶</button>
+                <button id="nextButton" type="button" aria-label="下一首" disabled>⏭</button>
+              </div>
+            </article>
+
+            <article class="glass-card local-library-card">
+              <header class="library-toolbar">
+                <div>
+                  <p class="eyebrow">本地 BGM 文件夹</p>
+                  <h2 id="libraryTitle">等待扫描</h2>
+                  <p id="bgmFolderPath" class="library-path"></p>
+                </div>
+                <div class="library-actions">
+                  <button id="openBgmFolderButton" class="quiet-button" type="button">打开 BGM 文件夹</button>
+                  <button id="rescanBgmButton" class="primary-button" type="button">重新扫描</button>
+                </div>
+              </header>
+
+              <div id="emptyLibrary" class="empty-library">
+                <span aria-hidden="true">♫</span>
+                <h3>BGM 文件夹还没有歌曲</h3>
+                <p>放入 MP3、M4A、AAC、WAV、FLAC、OGG 或 OPUS 文件。音频只在本机播放，不需要任何开发者会员。</p>
+                <small>推荐文件名：林家谦 - 歌名.mp3</small>
+              </div>
+
+              <div id="bgmLibrary" class="local-track-list" aria-live="polite"></div>
+            </article>
+          </div>
 
           <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
         </section>
