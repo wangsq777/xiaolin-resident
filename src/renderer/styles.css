@@ -94,7 +94,6 @@ input:focus-visible,
   z-index: 1;
   height: 100vh;
   padding: 28px 32px 32px;
-  overflow: auto;
 }
 
 .topbar,
@@ -509,8 +508,9 @@ h3 {
 .player-column {
   display: flex;
   flex-direction: column;
-  gap: 14px;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .glass-card {
@@ -1535,4 +1535,103 @@ code {
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+/* ============ Tab 分页导航 ============ */
+
+.tab-nav {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 14px;
+  padding: 4px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.tab-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  color: var(--muted);
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tab-btn:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.tab-btn.active {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.11);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.tab-icon {
+  font-size: 15px;
+  line-height: 1;
+}
+
+/* Tab 面板容器 */
+.tab-panel {
+  display: none;
+  flex: 1;
+  min-height: 0;
+}
+
+.tab-panel.active {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 面板内滚动区 */
+.tab-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  padding-right: 4px;
+  flex: 1;
+}
+
+/* 紧凑卡片 */
+.card-compact {
+  padding: 14px 18px;
+}
+
+/* 今日提醒记录 */
+.daily-count {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.count-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.count-chip span {
+  color: var(--purple);
+  font-weight: 800;
+  font-size: 16px;
 }

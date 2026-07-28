@@ -48,6 +48,11 @@
   }
 
   function bindEvents() {
+    // Tab 切换
+    document.querySelectorAll('.tab-btn').forEach((btn) => {
+      btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    });
+
     // BGM 控件
     elements.openBgmFolderButton?.addEventListener('click', openBgmFolder);
     elements.rescanBgmButton?.addEventListener('click', rescanBgmFolder);
@@ -138,6 +143,21 @@
     // 鼠标穿透
     elements.clickThroughEnabled?.addEventListener('change', async (event) => {
       await desktop.care.setClickThrough(event.target.checked);
+    });
+  }
+
+  // ============ Tab 切换 ============
+
+  function switchTab(tabId) {
+    // 更新按钮状态
+    document.querySelectorAll('.tab-btn').forEach((btn) => {
+      const isActive = btn.dataset.tab === tabId;
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-selected', isActive);
+    });
+    // 更新面板显隐
+    document.querySelectorAll('.tab-panel').forEach((panel) => {
+      panel.classList.toggle('active', panel.id === `tab-${tabId}`);
     });
   }
 
