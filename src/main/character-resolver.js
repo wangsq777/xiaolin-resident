@@ -22,7 +22,7 @@ const STATE_PRIORITY = [
 // 状态标识 -> 素材文件名映射
 const STATE_IMAGE_MAP = {
   default: 'default.png',
-  do_not_disturb: 'default.png',
+  do_not_disturb: 'do-not-disturb.png',
   working: 'working.png',
   leisure: 'leisure.png',
   reminder_drink: 'drinking.png',
@@ -68,9 +68,9 @@ function resolveCharacter(input = {}) {
     availableAssets = []
   } = input;
 
-  const available = new Set(
-    Array.isArray(availableAssets) ? availableAssets : [availableAssets]
-  );
+  const available = availableAssets instanceof Set
+    ? availableAssets
+    : new Set(Array.isArray(availableAssets) ? availableAssets : [availableAssets]);
 
   // 1. 计算逻辑状态（按优先级，任务文档 §3）
   // 优先级从高到低：免打扰 > 临时关怀提醒 > happy(完成提醒后的短暂回应) > 手动状态

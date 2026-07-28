@@ -35,7 +35,25 @@ const DEFAULTS = {
   bgm: {
     enabled: false
   },
-  dailySkip: {}
+  dailySkip: {},
+  // 今日提醒完成次数：{ date: '2026-07-27', drink: 0, stretch: 0, eyes: 0 }
+  // 日期变更时由 scheduler/store 重置为 0（任务文档 §9：新的一天重置）
+  dailyCount: {
+    date: '',
+    drink: 0,
+    stretch: 0,
+    eyes: 0
+  },
+  // 桌宠窗口记忆：位置、大小、透明度
+  windowMemory: {
+    x: null,
+    y: null,
+    width: 500,
+    height: 210,
+    opacity: 1
+  },
+  // 鼠标穿透模式
+  clickThrough: false
 };
 
 // 白名单字段，patch 时只接受这些键，忽略未知键
@@ -44,7 +62,10 @@ const ALLOWED_TOP_KEYS = new Set([
   'quietHours',
   'reminders',
   'bgm',
-  'dailySkip'
+  'dailySkip',
+  'dailyCount',
+  'windowMemory',
+  'clickThrough'
 ]);
 
 const ALLOWED_QUIET_HOURS = new Set(['enabled', 'start', 'end']);
@@ -178,6 +199,36 @@ class CareStore {
         }
         continue;
       }
+
+      if (key === 'dailyCount') {
+        if (value && typeof value === 'object') {
+          if (typeof value.date === 'string') next.dailyCount.date = value.date;
+          for (const type of ALLOWED_REMINDER_TYPES) {
+            if (typeof value[type] === 'number' && value[type] >= 0) {
+              next.dailyCount[type] = value[type];
+            }
+          }
+        }
+        continue;
+      }
+
+      if (key === 'windowMemory') {
+        if (value && typeof value === 'object') {
+          for (const k of ['x', 'y', 'width', 'height', 'opacity']) {
+            if (value[k] === null || typeof value[k] === 'number') {
+              next.windowMemory[k] = value[k];
+            }
+          }
+        }
+        continue;
+      }
+
+      if (key === 'clickThrough') {
+        if (typeof value === 'boolean') {
+          next.clickThrough = value;
+        }
+        continue;
+      }
     }
 
     return next;
@@ -206,6 +257,15 @@ class CareStore {
     }
     if (raw.dailySkip && typeof raw.dailySkip === 'object') {
       merged.dailySkip = { ...raw.dailySkip };
+    }
+    if (raw.dailyCount && typeof raw.dailyCount === 'object') {
+      Object.assign(merged.dailyCount, raw.dailyCount);
+    }
+    if (raw.windowMemory && typeof raw.windowMemory === 'object') {
+      Object.assign(merged.windowMemory, raw.windowMemory);
+    }
+    if (typeof raw.clickThrough === 'boolean') {
+      merged.clickThrough = raw.clickThrough;
     }
     return merged;
   }

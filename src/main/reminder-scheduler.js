@@ -2,9 +2,52 @@
 // 任务文档 §4：每个提醒事件只允许存在一个可见气泡。
 // 任务文档 §9：提醒计时器使用可注入时间，测试不依赖真实等待。
 
+const fs = require('node:fs');
+const path = require('node:path');
 const { isQuietNow, quietEndAt } = require('./quiet-hours');
 
 const REMINDER_TYPES = ['drink', 'stretch', 'eyes'];
+
+// 默认提醒文案：从本地配置文件加载，失败时回退到内置文案。
+// 任务文档 §P1：提醒文案本地配置文件，用户可自行编辑。
+const FALLBACK_MESSAGES = {
+  drink: ['忙归忙，先喝一点水。'],
+  stretch: ['坐得有点久了，起来活动一下。'],
+  eyes: ['看屏幕很久了，望望远处吧。']
+};
+
+let cachedMessages = null;
+
+function loadMessages() {
+  if (cachedMessages) return cachedMessages;
+  try {
+    const filePath = path.join(__dirname, 'reminder-messages.json');
+    const raw = fs.readFileSync(filePath, 'utf8');
+    const parsed = JSON.parse(raw);
+    // 只保留 REMINDER_TYPES 对应的字符串数组字段，做基本校验
+    cachedMessages = {};
+    for (const type of REMINDER_TYPES) {
+      const value = parsed[type];
+      if (Array.isArray(value) && value.every((s) => typeof s === 'string' && s.length > 0)) {
+        cachedMessages[type] = value;
+      } else {
+        cachedMessages[type] = FALLBACK_MESSAGES[type];
+      }
+    }
+  } catch {
+    cachedMessages = { ...FALLBACK_MESSAGES };
+  }
+  return cachedMessages;
+}
+
+/**
+ * 从某类提醒的文案列表中随机选一条。
+ */
+function pickMessage(type) {
+  const messages = loadMessages();
+  const list = messages[type] || FALLBACK_MESSAGES[type] || ['该休息一下了。'];
+  return list[Math.floor(Math.random() * list.length)];
+}
 
 /**
  * 计算某个提醒的下次到期时间。
@@ -33,16 +76,33 @@ class ReminderScheduler {
     this.dailySkip = {};        // { drink: '2026-07-27' }
     this.nextDue = {};          // { drink: Date }
     this.activeReminder = null; // 当前可见的提醒 { type, message, dueAt }
+    // 今日完成次数：{ date: '2026-07-27', drink: 0, stretch: 0, eyes: 0 }
+    this.dailyCount = { date: '', drink: 0, stretch: 0, eyes: 0 };
   }
 
   /**
    * 用关怀设置重置调度器状态。
    * 保留未处理的 activeReminder；重算每类提醒的下次到期。
+   * dailyCount 日期变更时自动重置（任务文档 §9：新的一天重置）。
    */
-  setConfig({ reminders = {}, quietHours = {}, dailySkip = {} } = {}) {
+  setConfig({ reminders = {}, quietHours = {}, dailySkip = {}, dailyCount } = {}) {
     this.reminders = reminders;
     this.quietHours = quietHours;
     this.dailySkip = dailySkip || {};
+
+    // dailyCount 日期重置：传入的日期与今天不同则归零
+    const today = this.dateKey(this.now());
+    if (dailyCount && typeof dailyCount === 'object') {
+      if (dailyCount.date === today) {
+        this.dailyCount = { ...dailyCount };
+      } else {
+        // 日期变更，重置计数（任务文档 §9）
+        this.dailyCount = { date: today, drink: 0, stretch: 0, eyes: 0 };
+      }
+    } else {
+      this.dailyCount = { date: today, drink: 0, stretch: 0, eyes: 0 };
+    }
+
     // 重算 nextDue：保留已设置但未到期的，补齐缺失的
     const now = this.now();
     for (const type of REMINDER_TYPES) {
@@ -62,6 +122,7 @@ class ReminderScheduler {
 
   /**
    * 清理过期的 dailySkip（次日自动恢复，任务文档 §9）。
+   * 同时检查 dailyCount 日期重置（新的一天归零）。
    */
   cleanExpiredSkips() {
     const today = this.dateKey(this.now());
@@ -69,6 +130,20 @@ class ReminderScheduler {
       if (this.dailySkip[type] < today) {
         delete this.dailySkip[type];
       }
+    }
+    // dailyCount 日期变更时重置
+    if (this.dailyCount.date !== today) {
+      this.dailyCount = { date: today, drink: 0, stretch: 0, eyes: 0 };
+    }
+  }
+
+  /**
+   * 确保 dailyCount 日期与今天一致，否则重置。
+   */
+  ensureDailyCountDate() {
+    const today = this.dateKey(this.now());
+    if (this.dailyCount.date !== today) {
+      this.dailyCount = { date: today, drink: 0, stretch: 0, eyes: 0 };
     }
   }
 
@@ -129,7 +204,7 @@ class ReminderScheduler {
     const triggered = dueList[0];
     this.activeReminder = {
       type: triggered.type,
-      message: REMINDER_MESSAGES[triggered.type] || '该休息一下了',
+      message: pickMessage(triggered.type),
       dueAt: triggered.dueAt
     };
     this.onDue?.(this.activeReminder);
@@ -151,6 +226,9 @@ class ReminderScheduler {
       this.nextDue[type] = new Date(now.getTime() + cfg.intervalMinutes * 60 * 1000);
       // 完成后清除当天跳过记录
       delete this.dailySkip[type];
+      // 递增今日完成次数（任务文档 §P1：今日提醒完成次数）
+      this.ensureDailyCountDate();
+      this.dailyCount[type] = (this.dailyCount[type] || 0) + 1;
     } else if (action === 'snooze') {
       const snooze = Number(cfg.snoozeMinutes) || 10;
       this.nextDue[type] = new Date(now.getTime() + snooze * 60 * 1000);
@@ -178,6 +256,7 @@ class ReminderScheduler {
       activeReminder: this.activeReminder,
       nextDue: { ...this.nextDue },
       dailySkip: { ...this.dailySkip },
+      dailyCount: { ...this.dailyCount },
       now: now.toISOString()
     };
   }
@@ -190,16 +269,10 @@ class ReminderScheduler {
   }
 }
 
-// 默认提醒文案（任务文档 §4 示例）
-const REMINDER_MESSAGES = {
-  drink: '忙归忙，先喝一点水。',
-  stretch: '坐得有点久了，起来活动一下。',
-  eyes: '看屏幕很久了，望望远处吧。'
-};
-
 module.exports = {
   ReminderScheduler,
   REMINDER_TYPES,
-  REMINDER_MESSAGES,
+  loadMessages,
+  pickMessage,
   computeNextDue
 };

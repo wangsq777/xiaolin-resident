@@ -77,6 +77,32 @@
       if (value > 0) patchCare({ reminders: { drink: { snoozeMinutes: value } } });
     });
 
+    // 久坐活动提醒
+    elements.stretchEnabled?.addEventListener('change', (event) => {
+      patchCare({ reminders: { stretch: { enabled: event.target.checked } } });
+    });
+    elements.stretchInterval?.addEventListener('change', (event) => {
+      const value = Number(event.target.value);
+      if (value > 0) patchCare({ reminders: { stretch: { intervalMinutes: value } } });
+    });
+    elements.stretchSnooze?.addEventListener('change', (event) => {
+      const value = Number(event.target.value);
+      if (value > 0) patchCare({ reminders: { stretch: { snoozeMinutes: value } } });
+    });
+
+    // 眼睛休息提醒
+    elements.eyesEnabled?.addEventListener('change', (event) => {
+      patchCare({ reminders: { eyes: { enabled: event.target.checked } } });
+    });
+    elements.eyesInterval?.addEventListener('change', (event) => {
+      const value = Number(event.target.value);
+      if (value > 0) patchCare({ reminders: { eyes: { intervalMinutes: value } } });
+    });
+    elements.eyesSnooze?.addEventListener('change', (event) => {
+      const value = Number(event.target.value);
+      if (value > 0) patchCare({ reminders: { eyes: { snoozeMinutes: value } } });
+    });
+
     // 安静时段
     elements.quietEnabled?.addEventListener('change', (event) => {
       patchCare({ quietHours: { enabled: event.target.checked } });
@@ -108,6 +134,11 @@
       }
       renderBgmSection();
     });
+
+    // 鼠标穿透
+    elements.clickThroughEnabled?.addEventListener('change', async (event) => {
+      await desktop.care.setClickThrough(event.target.checked);
+    });
   }
 
   // ============ 关怀设置 ============
@@ -136,6 +167,16 @@
     if (elements.drinkInterval) elements.drinkInterval.value = careConfig.reminders.drink.intervalMinutes;
     if (elements.drinkSnooze) elements.drinkSnooze.value = careConfig.reminders.drink.snoozeMinutes;
 
+    // 久坐活动提醒
+    if (elements.stretchEnabled) elements.stretchEnabled.checked = careConfig.reminders.stretch.enabled;
+    if (elements.stretchInterval) elements.stretchInterval.value = careConfig.reminders.stretch.intervalMinutes;
+    if (elements.stretchSnooze) elements.stretchSnooze.value = careConfig.reminders.stretch.snoozeMinutes;
+
+    // 眼睛休息提醒
+    if (elements.eyesEnabled) elements.eyesEnabled.checked = careConfig.reminders.eyes.enabled;
+    if (elements.eyesInterval) elements.eyesInterval.value = careConfig.reminders.eyes.intervalMinutes;
+    if (elements.eyesSnooze) elements.eyesSnooze.value = careConfig.reminders.eyes.snoozeMinutes;
+
     // 安静时段
     if (elements.quietEnabled) elements.quietEnabled.checked = careConfig.quietHours.enabled;
     if (elements.quietStart) elements.quietStart.value = careConfig.quietHours.start;
@@ -144,6 +185,9 @@
     // BGM 开关
     if (elements.bgmEnabled) elements.bgmEnabled.checked = careConfig.bgm.enabled;
     renderBgmSection();
+
+    // 鼠标穿透
+    if (elements.clickThroughEnabled) elements.clickThroughEnabled.checked = Boolean(careConfig.clickThrough);
   }
 
   function renderBgmSection() {
@@ -152,10 +196,19 @@
     if (bgmSection) bgmSection.hidden = !enabled;
   }
 
-  // main 广播的统一状态：更新角色舞台形象
+  // main 广播的统一状态：更新角色舞台形象 + 今日完成次数
   function handleStateUpdate(state) {
     unifiedState = state;
     renderCharacterStage();
+    renderDailyCount();
+  }
+
+  function renderDailyCount() {
+    if (!unifiedState?.dailyCount) return;
+    const dc = unifiedState.dailyCount;
+    if (elements.drinkCount) elements.drinkCount.textContent = dc.drink || 0;
+    if (elements.stretchCount) elements.stretchCount.textContent = dc.stretch || 0;
+    if (elements.eyesCount) elements.eyesCount.textContent = dc.eyes || 0;
   }
 
   function renderCharacterStage() {
@@ -190,6 +243,7 @@
       const assets = await desktop.care.getAssetStatus();
       const labels = {
         'default.png': '默认',
+        'do-not-disturb.png': '免打扰',
         'working.png': '工作',
         'leisure.png': '休闲',
         'drinking.png': '喝水',
@@ -383,11 +437,15 @@
       'playerStatus', 'trackTitle', 'trackArtist', 'previousButton', 'playPauseButton',
       'nextButton', 'libraryTitle', 'bgmFolderPath', 'openBgmFolderButton',
       'rescanBgmButton', 'emptyLibrary', 'bgmLibrary', 'toast',
-      // 关怀中心新增
+      // 关怀中心
       'careCenter', 'stateSwitcher', 'drinkReminderCard',
       'drinkEnabled', 'drinkInterval', 'drinkSnooze',
+      'stretchEnabled', 'stretchInterval', 'stretchSnooze',
+      'eyesEnabled', 'eyesInterval', 'eyesSnooze',
       'quietEnabled', 'quietStart', 'quietEnd',
-      'bgmEnabled', 'bgmSection', 'assetStatus'
+      'bgmEnabled', 'bgmSection', 'assetStatus', 'clickThroughEnabled',
+      // 今日提醒记录
+      'drinkCount', 'stretchCount', 'eyesCount'
     ];
     return Object.fromEntries(ids.map((id) => [id, document.getElementById(id)]));
   }

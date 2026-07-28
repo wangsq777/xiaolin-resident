@@ -8,12 +8,13 @@ const captureDirectory = path.join(projectDirectory, 'artifacts');
 const capturePath = path.join(captureDirectory, 'electron-ui-smoke.png');
 const electronPath = require('electron');
 const smokeBgmDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'xiaolin-bgm-smoke-'));
+const smokeUserDataDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'xiaolin-user-data-smoke-'));
 const smokeTrackPath = path.join(smokeBgmDirectory, '林家谦 - 本地 BGM 测试.wav');
 
 fs.mkdirSync(captureDirectory, { recursive: true });
 fs.writeFileSync(smokeTrackPath, createSilentWave());
 
-const child = spawn(electronPath, ['.'], {
+const child = spawn(electronPath, ['.', `--user-data-dir=${smokeUserDataDirectory}`], {
   cwd: projectDirectory,
   env: {
     ...process.env,
@@ -30,6 +31,7 @@ const timeout = setTimeout(() => {
 child.on('exit', (code, signal) => {
   clearTimeout(timeout);
   fs.rmSync(smokeBgmDirectory, { recursive: true, force: true });
+  fs.rmSync(smokeUserDataDirectory, { recursive: true, force: true });
   if (signal) {
     console.error(`Electron smoke test stopped by ${signal}`);
     process.exitCode = 1;

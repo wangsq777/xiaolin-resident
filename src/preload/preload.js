@@ -25,7 +25,8 @@ contextBridge.exposeInMainWorld('xiaolinDesktop', {
     get: () => ipcRenderer.invoke('care:get'),
     patch: (partial) => ipcRenderer.invoke('care:patch', partial),
     reset: () => ipcRenderer.invoke('care:reset'),
-    getAssetStatus: () => ipcRenderer.invoke('care:asset-status')
+    getAssetStatus: () => ipcRenderer.invoke('care:asset-status'),
+    setClickThrough: (enabled) => ipcRenderer.invoke('care:click-through', enabled)
   },
   state: {
     get: () => ipcRenderer.invoke('state:request'),

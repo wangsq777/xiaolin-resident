@@ -1,0 +1,144 @@
+{
+  "states": {
+    "leisure": {
+      "source": "leisure.png",
+      "output": "leisure.png",
+      "width": 1254,
+      "height": 1254,
+      "background": [
+        254,
+        254,
+        254
+      ],
+      "visibleCoverage": 0.3877,
+      "visibleBounds": [
+        190,
+        107,
+        1049,
+        1159
+      ]
+    },
+    "drinking": {
+      "source": "drinking.png",
+      "output": "drinking.png",
+      "width": 1254,
+      "height": 1254,
+      "background": [
+        253,
+        253,
+        253
+      ],
+      "visibleCoverage": 0.3465,
+      "visibleBounds": [
+        239,
+        123,
+        1011,
+        1174
+      ]
+    },
+    "stretching": {
+      "source": "stretching.png",
+      "output": "stretching.png",
+      "width": 1254,
+      "height": 1254,
+      "background": [
+        254,
+        254,
+        254
+      ],
+      "visibleCoverage": 0.3788,
+      "visibleBounds": [
+        191,
+        119,
+        1121,
+        1163
+      ]
+    },
+    "eyes-rest": {
+      "source": "eyes-rest.jpg",
+      "output": "eyes-rest.png",
+      "width": 1920,
+      "height": 1920,
+      "background": [
+        252,
+        252,
+        252
+      ],
+      "visibleCoverage": 0.4113,
+      "visibleBounds": [
+        369,
+        172,
+        1569,
+        1816
+      ]
+    },
+    "sleeping": {
+      "source": "sleeping.jpg",
+      "output": "sleeping.png",
+      "width": 1920,
+      "height": 1920,
+      "background": [
+        252,
+        252,
+        252
+      ],
+      "visibleCoverage": 0.3254,
+      "visibleBounds": [
+        208,
+        232,
+        1677,
+        1800
+      ]
+    },
+    "happy": {
+      "source": "happy.png",
+      "output": "happy.png",
+      "width": 1024,
+      "height": 1024,
+      "background": [
+        253,
+        253,
+        253
+      ],
+      "visibleCoverage": 0.2806,
+      "visibleBounds": [
+        183,
+        123,
+        790,
+        946
+      ]
+    },
+    "do-not-disturb": {
+      "source": "do-not-disturb.png",
+      "output": "do-not-disturb.png",
+      "width": 1254,
+      "height": 1254,
+      "background": [
+        253,
+        253,
+        253
+      ],
+      "visibleCoverage": 0.4842,
+      "visibleBounds": [
+        30,
+        136,
+        1224,
+        1199
+      ]
+    },
+    "default": {
+      "source": "chibi-lam-pixel.png",
+      "output": "default.png",
+      "width": 836,
+      "height": 1119,
+      "preservedExistingAsset": true
+    },
+    "working": {
+      "source": "chibi-lam-singing.png",
+      "output": "working.png",
+      "width": 1174,
+      "height": 1213,
+      "preservedExistingAsset": true
+    }
+  }
+}

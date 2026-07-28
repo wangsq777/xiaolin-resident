@@ -80,6 +80,60 @@
             </div>
           </article>
 
+          <!-- 久坐活动提醒 -->
+          <article id="stretchReminderCard" class="glass-card care-card">
+            <header class="care-card-header">
+              <h2>久坐活动提醒</h2>
+              <label class="switch">
+                <input id="stretchEnabled" type="checkbox">
+                <span class="switch-track"></span>
+              </label>
+            </header>
+            <div class="care-fields">
+              <label class="care-field">
+                <span>提醒间隔（分钟）</span>
+                <input id="stretchInterval" type="number" min="1" max="480" step="5">
+              </label>
+              <label class="care-field">
+                <span>稍后提醒（分钟）</span>
+                <input id="stretchSnooze" type="number" min="1" max="120" step="1">
+              </label>
+            </div>
+          </article>
+
+          <!-- 眼睛休息提醒 -->
+          <article id="eyesReminderCard" class="glass-card care-card">
+            <header class="care-card-header">
+              <h2>眼睛休息提醒</h2>
+              <label class="switch">
+                <input id="eyesEnabled" type="checkbox">
+                <span class="switch-track"></span>
+              </label>
+            </header>
+            <div class="care-fields">
+              <label class="care-field">
+                <span>提醒间隔（分钟）</span>
+                <input id="eyesInterval" type="number" min="1" max="480" step="5">
+              </label>
+              <label class="care-field">
+                <span>稍后提醒（分钟）</span>
+                <input id="eyesSnooze" type="number" min="1" max="120" step="1">
+              </label>
+            </div>
+          </article>
+
+          <!-- 今日提醒记录 -->
+          <article class="glass-card care-card">
+            <header class="care-card-header">
+              <h2>今日提醒记录</h2>
+            </header>
+            <div class="daily-count">
+              <span class="count-chip"><span id="drinkCount">0</span> 次喝水</span>
+              <span class="count-chip"><span id="stretchCount">0</span> 次活动</span>
+              <span class="count-chip"><span id="eyesCount">0</span> 次护眼</span>
+            </div>
+          </article>
+
           <!-- 安静时段 -->
           <article class="glass-card care-card">
             <header class="care-card-header">
@@ -112,6 +166,18 @@
               </label>
             </header>
             <p class="care-hint">关闭时桌宠只做陪伴与提醒；启用后才显示音乐控制。</p>
+          </article>
+
+          <!-- 鼠标穿透 -->
+          <article class="glass-card care-card">
+            <header class="care-card-header">
+              <h2>鼠标穿透</h2>
+              <label class="switch">
+                <input id="clickThroughEnabled" type="checkbox">
+                <span class="switch-track"></span>
+              </label>
+            </header>
+            <p class="care-hint">开启后桌宠窗口不响应鼠标事件，方便放在工作区边缘。</p>
           </article>
 
           <!-- BGM 区块（启用时才显示） -->

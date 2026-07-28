@@ -14,6 +14,15 @@ test('默认状态为 leisure，素材就绪时返回对应图', () => {
   assert.equal(result.statusText, '看书');
 });
 
+test('接受主进程扫描素材时使用的 Set 集合', () => {
+  const result = resolveCharacter({
+    manualState: 'leisure',
+    availableAssets: new Set(['default.png', 'leisure.png'])
+  });
+  assert.equal(result.imageSrc, './assets/character-states/leisure.png');
+  assert.equal(result.fallbackUsed, false);
+});
+
 test('working 状态映射吉他形象', () => {
   const result = resolveCharacter({
     manualState: 'working',
@@ -48,10 +57,10 @@ test('优先级：免打扰覆盖提醒与手动状态', () => {
     manualState: 'working',
     reminder: 'drink',
     quietActive: true,
-    availableAssets: ['default.png', 'working.png', 'drinking.png']
+    availableAssets: ['default.png', 'do-not-disturb.png', 'working.png', 'drinking.png']
   });
   assert.equal(result.stateKey, 'do_not_disturb');
-  assert.equal(result.imageSrc, './assets/character-states/default.png');
+  assert.equal(result.imageSrc, './assets/character-states/do-not-disturb.png');
   assert.equal(result.statusText, '安静时段');
 });
 
@@ -89,7 +98,7 @@ test('优先级：happy 覆盖手动状态但不覆盖提醒与免打扰', () =>
     manualState: 'leisure',
     happyActive: true,
     quietActive: true,
-    availableAssets: ['default.png', 'happy.png']
+    availableAssets: ['default.png', 'do-not-disturb.png', 'happy.png']
   });
   assert.equal(r3.stateKey, 'do_not_disturb');
 });
@@ -126,7 +135,8 @@ test('listKnownStateImages 返回去重后的全部素材文件名', () => {
   assert.ok(images.includes('working.png'));
   assert.ok(images.includes('leisure.png'));
   assert.ok(images.includes('drinking.png'));
-  // 去重：do_not_disturb 和 default 都映射 default.png，应只出现一次
+  assert.ok(images.includes('do-not-disturb.png'));
+  // 所有状态共用的默认回退图只应列出一次
   const defaultCount = images.filter((f) => f === 'default.png').length;
   assert.equal(defaultCount, 1);
 });
