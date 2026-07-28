@@ -501,13 +501,16 @@ async function runSmokeCaptureIfRequested() {
     await fsPromises.mkdir(path.dirname(capturePath), { recursive: true });
 
     const mainState = await mainWindow.webContents.executeJavaScript(`(() => {
-      const character = document.querySelector('.pixel-chibi img');
+      // 切换到 BGM 标签页，使 BGM 面板可见
+      document.querySelectorAll('.tab-btn').forEach((btn) => {
+        if (btn.dataset.tab === 'bgm') btn.click();
+      });
       return {
         title: document.title,
         isLocalBgmPage: Boolean(document.getElementById('bgmLibrary')),
         hasOpenFolderButton: Boolean(document.getElementById('openBgmFolderButton')),
         hasRescanButton: Boolean(document.getElementById('rescanBgmButton')),
-        pixelChibiLoaded: Boolean(character?.complete && character.naturalWidth > 0),
+        pixelChibiLoaded: Boolean(document.querySelector('.pixel-chibi img')?.complete && document.querySelector('.pixel-chibi img').naturalWidth > 0),
         visibleTrackRows: document.querySelectorAll('.local-track-row').length,
         hasCareCenter: Boolean(document.getElementById('careCenter')),
         hasStateSwitcher: Boolean(document.getElementById('stateSwitcher')),
@@ -515,7 +518,11 @@ async function runSmokeCaptureIfRequested() {
         hasStretchReminderCard: Boolean(document.getElementById('stretchReminderCard')),
         hasEyesReminderCard: Boolean(document.getElementById('eyesReminderCard')),
         hasDailyCount: Boolean(document.getElementById('drinkCount')) && Boolean(document.getElementById('stretchCount')) && Boolean(document.getElementById('eyesCount')),
-        hasClickThroughToggle: Boolean(document.getElementById('clickThroughEnabled'))
+        hasClickThroughToggle: Boolean(document.getElementById('clickThroughEnabled')),
+        hasTabNav: Boolean(document.querySelector('.tab-nav')),
+        hasTabReminders: Boolean(document.getElementById('tabBtn-reminders')),
+        hasTabBgm: Boolean(document.getElementById('tabBtn-bgm')),
+        hasTabSettings: Boolean(document.getElementById('tabBtn-settings'))
       };
     })()`);
     const mainImage = await mainWindow.webContents.capturePage();
