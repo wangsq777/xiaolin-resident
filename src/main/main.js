@@ -9,6 +9,7 @@ const {
   Menu,
   net,
   nativeImage,
+  powerMonitor,
   protocol,
   screen,
   shell,
@@ -49,6 +50,13 @@ let tray = null;
 let careStore;
 let scheduler;
 let schedulerTimer;
+
+// 睡眠状态
+let sleepActive = false;
+let sleepIdleTimer = null;
+const SLEEP_IDLE_THRESHOLD_MS = 15 * 60 * 1000; // 15 分钟无操作进入睡眠
+const SLEEP_HOURS_START = 23; // 23:00 起进入睡眠
+const SLEEP_HOURS_END = 8;    // 08:00 结束睡眠
 
 // 当前关怀状态快照（合并角色、提醒、BGM），由 broadcastState 统一发布
 let careConfig = null;
@@ -306,6 +314,7 @@ function buildUnifiedState() {
     reminder: activeReminder?.type || null,
     quietActive,
     happyActive,
+    sleepActive,
     availableAssets
   });
 
@@ -330,6 +339,7 @@ function buildUnifiedState() {
       fallbackUsed: character.fallbackUsed
     },
     statusText,
+    sleepActive,
     reminder: activeReminder ? {
       type: activeReminder.type,
       message: activeReminder.message,
@@ -637,6 +647,7 @@ app.whenReady().then(async () => {
 
   createPetWindow();
   createTray();
+  setupSleepDetection();
   // 启动时主窗显隐：BGM 启用且有歌时只显示桌宠小窗（延续 v0.3 体验）；
   // BGM 关闭（默认）或无歌时显示关怀中心，便于用户配置关怀功能。
   const showMainOnReady = careConfig.bgm.enabled
@@ -696,6 +707,46 @@ function startSchedulerLoop() {
       broadcastState();
     }
   }, 1000);
+}
+
+/**
+ * 睡眠状态检测：夜间时段或长时间无操作时自动进入 sleeping。
+ * 每 15 秒检查一次，避免频繁广播。
+ */
+function setupSleepDetection() {
+  function computeSleepActive() {
+    const hour = new Date().getHours();
+    // 夜间时段检测（跨午夜：23:00-08:00）
+    const isNightTime = hour >= SLEEP_HOURS_START || hour < SLEEP_HOURS_END;
+    // 系统空闲检测
+    let isIdle = false;
+    try {
+      const idleSeconds = powerMonitor.getSystemIdleTime();
+      isIdle = idleSeconds * 1000 >= SLEEP_IDLE_THRESHOLD_MS;
+    } catch {
+      // 某些平台不支持，仅用夜间时段判断
+    }
+    return isNightTime || isIdle;
+  }
+
+  function updateSleepState() {
+    const newSleepActive = computeSleepActive();
+    if (newSleepActive !== sleepActive) {
+      sleepActive = newSleepActive;
+      broadcastState();
+    }
+  }
+
+  // 每 15 秒检查一次
+  setInterval(updateSleepState, 15000);
+  // 立即检查一次
+  updateSleepState();
+
+  // 监听系统唤醒/活动事件
+  powerMonitor.on('resume', () => {
+    sleepActive = false;
+    broadcastState();
+  });
 }
 
 app.on('before-quit', () => {

@@ -267,3 +267,22 @@ button {
 .pet-shell.working .pet-character {
   animation: pet-sing 0.92s ease-in-out infinite;
 }
+
+/* sleeping 状态用慢呼吸动画 + 降低亮度 */
+.pet-shell.sleeping .pet-character {
+  animation: pet-sleep 5s ease-in-out infinite;
+  filter: brightness(0.7) drop-shadow(0 11px 14px rgba(0, 0, 0, 0.26));
+}
+
+@keyframes pet-sleep {
+  0%, 100% { transform: translateY(0) scaleY(1); }
+  50% { transform: translateY(-1px) scaleY(1.008); }
+}
+
+.pet-shell.sleeping .song-copy p {
+  color: var(--muted);
+}
+
+.pet-shell.sleeping .song-copy h1 {
+  opacity: 0.6;
+}

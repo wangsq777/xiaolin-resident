@@ -56,6 +56,7 @@ const ASSET_BASE = './assets/character-states/';
  * @param {string|null} [input.reminder] 当前到期的提醒类型：drink / stretch / eyes
  * @param {boolean} [input.quietActive] 是否处于安静时段 / 免打扰
  * @param {string|null} [input.happyActive] 是否处于 happy 短暂态
+ * @param {boolean} [input.sleepActive] 是否处于睡眠状态（夜间/idle）
  * @param {Set<string>|string[]} [input.availableAssets] 已就绪的素材文件名集合
  * @returns {{ stateKey: string, imageSrc: string, fallbackUsed: boolean, statusText: string }}
  */
@@ -65,6 +66,7 @@ function resolveCharacter(input = {}) {
     reminder = null,
     quietActive = false,
     happyActive = false,
+    sleepActive = false,
     availableAssets = []
   } = input;
 
@@ -73,8 +75,8 @@ function resolveCharacter(input = {}) {
     : new Set(Array.isArray(availableAssets) ? availableAssets : [availableAssets]);
 
   // 1. 计算逻辑状态（按优先级，任务文档 §3）
-  // 优先级从高到低：免打扰 > 临时关怀提醒 > happy(完成提醒后的短暂回应) > 手动状态
-  // happy 是"完成提醒后"的回应，故当提醒正在显示时应显示提醒态而非 happy
+  // 优先级从高到低：免打扰 > 临时关怀提醒 > happy(完成提醒后的短暂回应) > 手动工作/免打扰 > 睡眠 > 休闲
+  // sleeping 仅在用户处于休闲或未手动选择状态时自动激活
   let stateKey;
   if (quietActive) {
     stateKey = 'do_not_disturb';
@@ -82,8 +84,12 @@ function resolveCharacter(input = {}) {
     stateKey = `reminder_${reminder}`;
   } else if (happyActive) {
     stateKey = 'happy';
-  } else if (manualState === 'working' || manualState === 'leisure' || manualState === 'do_not_disturb') {
+  } else if (manualState === 'working' || manualState === 'do_not_disturb') {
     stateKey = manualState;
+  } else if (sleepActive) {
+    stateKey = 'sleeping';
+  } else if (manualState === 'leisure') {
+    stateKey = 'leisure';
   } else {
     stateKey = 'leisure';
   }

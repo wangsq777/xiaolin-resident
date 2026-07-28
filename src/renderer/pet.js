@@ -45,9 +45,10 @@
     if (character.getAttribute('src') !== imageSrc) {
       character.setAttribute('src', imageSrc);
     }
-    // 角色动画：working 用 pet-sing，其余视状态而定
+    // 角色动画：working 用 pet-sing，sleeping 用慢呼吸
     const stateKey = state?.character?.stateKey || 'default';
     shell.classList.toggle('working', stateKey === 'working' || stateKey === 'reminder_drink');
+    shell.classList.toggle('sleeping', stateKey === 'sleeping');
 
     // 状态文字
     status.textContent = state?.statusText || '在这里陪你';

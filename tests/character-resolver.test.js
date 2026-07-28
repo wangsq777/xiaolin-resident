@@ -111,6 +111,52 @@ test('未知 manualState 回退到 leisure', () => {
   assert.equal(result.stateKey, 'leisure');
 });
 
+test('sleepActive 在 leisure 时进入 sleeping', () => {
+  const result = resolveCharacter({
+    manualState: 'leisure',
+    sleepActive: true,
+    availableAssets: ['default.png', 'sleeping.png']
+  });
+  assert.equal(result.stateKey, 'sleeping');
+  assert.equal(result.imageSrc, './assets/character-states/sleeping.png');
+  assert.equal(result.statusText, '休息中');
+  assert.equal(result.fallbackUsed, false);
+});
+
+test('sleepActive 不覆盖 working/do_not_disturb', () => {
+  const r1 = resolveCharacter({
+    manualState: 'working',
+    sleepActive: true,
+    availableAssets: ['default.png', 'working.png', 'sleeping.png']
+  });
+  assert.equal(r1.stateKey, 'working');
+
+  const r2 = resolveCharacter({
+    manualState: 'do_not_disturb',
+    sleepActive: true,
+    availableAssets: ['default.png', 'do-not-disturb.png', 'sleeping.png']
+  });
+  assert.equal(r2.stateKey, 'do_not_disturb');
+});
+
+test('sleepActive 被提醒和免打扰覆盖', () => {
+  const r1 = resolveCharacter({
+    manualState: 'leisure',
+    sleepActive: true,
+    reminder: 'drink',
+    availableAssets: ['default.png', 'drinking.png', 'sleeping.png']
+  });
+  assert.equal(r1.stateKey, 'reminder_drink');
+
+  const r2 = resolveCharacter({
+    manualState: 'leisure',
+    sleepActive: true,
+    quietActive: true,
+    availableAssets: ['default.png', 'do-not-disturb.png', 'sleeping.png']
+  });
+  assert.equal(r2.stateKey, 'do_not_disturb');
+});
+
 test('reminder 类型映射到对应素材', () => {
   const stretch = resolveCharacter({
     manualState: 'working',
