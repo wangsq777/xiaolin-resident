@@ -103,7 +103,7 @@ class ReminderScheduler {
       this.dailyCount = { date: today, drink: 0, stretch: 0, eyes: 0 };
     }
 
-    // 重算 nextDue：保留已设置但未到期的，补齐缺失的
+    // 重算 nextDue：每次 setConfig 都重新计算，确保间隔变更立即生效
     const now = this.now();
     for (const type of REMINDER_TYPES) {
       const cfg = this.reminders[type];
@@ -111,9 +111,6 @@ class ReminderScheduler {
         delete this.nextDue[type];
         continue;
       }
-      // 已有 nextDue 且未过期则保留；否则重新计算
-      const existing = this.nextDue[type];
-      if (existing && existing.getTime() > now.getTime()) continue;
       const next = computeNextDue(cfg, now);
       if (next) this.nextDue[type] = next;
       else delete this.nextDue[type];
