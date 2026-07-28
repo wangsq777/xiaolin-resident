@@ -9,6 +9,7 @@ const {
   Menu,
   net,
   nativeImage,
+  Notification,
   powerMonitor,
   protocol,
   screen,
@@ -626,6 +627,13 @@ app.whenReady().then(async () => {
     onDue: (reminder) => {
       activeReminder = reminder;
       broadcastState();
+      // 弹出系统通知
+      const notification = new Notification({
+        title: '小林驻留中',
+        body: reminder.message,
+        silent: false
+      });
+      notification.show();
     }
   });
   applyCareConfig();
