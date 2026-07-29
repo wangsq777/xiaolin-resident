@@ -50,7 +50,7 @@ test('到期触发提醒', () => {
   clock.advance(60);
   const due = scheduler.tick();
   assert.equal(due.type, 'drink');
-  assert.equal(due.message, '忙归忙，先喝一点水。');
+  assert.equal(due.message, '忙都要飲啖水喎。');
 });
 
 test('complete 动作重置下次到期时间', () => {
@@ -159,6 +159,56 @@ test('多个提醒同时到期只返回一个，避免堆叠', () => {
   const third = scheduler.tick();
   assert.ok(third);
   assert.notEqual(third.type, first.type);
+});
+
+test('保存提醒记录后不会重置其他提醒的倒计时', () => {
+  const clock = makeClock(BASE_TIME);
+  const scheduler = new ReminderScheduler({ now: clock.now });
+  const config = {
+    reminders: {
+      drink: { enabled: true, intervalMinutes: 30, snoozeMinutes: 1 },
+      stretch: { enabled: true, intervalMinutes: 60, snoozeMinutes: 2 },
+      eyes: { enabled: true, intervalMinutes: 45, snoozeMinutes: 5 }
+    },
+    quietHours: { enabled: false, start: '23:00', end: '08:00' },
+    dailySkip: {},
+    dailyCount: { date: '2026-07-27', drink: 0, stretch: 0, eyes: 0 }
+  };
+  scheduler.setConfig(config);
+
+  // 10:30 喝水提醒到期并完成，模拟 main 持久化后再次 applyCareConfig。
+  clock.advance(30);
+  assert.equal(scheduler.tick().type, 'drink');
+  scheduler.handleAction('drink', 'complete');
+  config.dailyCount = scheduler.getSnapshot().dailyCount;
+  scheduler.setConfig(config);
+
+  // 眼睛提醒仍应在 10:45 到期，而不是被推迟到 11:15。
+  clock.advance(15);
+  assert.equal(scheduler.tick().type, 'eyes');
+});
+
+test('关闭后重新打开提醒会从当前时间重新开始计时', () => {
+  const clock = makeClock(BASE_TIME);
+  const scheduler = new ReminderScheduler({ now: clock.now });
+  const config = makeConfig({
+    reminders: {
+      drink: { enabled: false, intervalMinutes: 60, snoozeMinutes: 10 },
+      stretch: { enabled: false, intervalMinutes: 2, snoozeMinutes: 1 },
+      eyes: { enabled: false, intervalMinutes: 45, snoozeMinutes: 10 }
+    }
+  });
+
+  scheduler.setConfig(config);
+  clock.advance(20);
+  config.reminders.stretch.enabled = true;
+  scheduler.setConfig(config);
+
+  assert.equal(scheduler.getSnapshot().nextDue.stretch.getTime(), BASE_TIME + 22 * 60 * 1000);
+  clock.advance(1);
+  assert.equal(scheduler.tick(), null);
+  clock.advance(1);
+  assert.equal(scheduler.tick().type, 'stretch');
 });
 
 test('禁用的提醒不会触发', () => {

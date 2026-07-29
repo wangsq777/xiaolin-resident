@@ -1,7 +1,14 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-// 主窗（关怀中心）可用 API：BGM 控制 + 关怀设置 + 状态同步
+// 主窗（关怀中心）可用 API：物料雷达 + 关怀设置 + 状态同步
 contextBridge.exposeInMainWorld('xiaolinDesktop', {
+  materials: {
+    get: () => ipcRenderer.invoke('materials:get'),
+    refresh: () => ipcRenderer.invoke('materials:refresh'),
+    markRead: (id) => ipcRenderer.invoke('materials:mark-read', id),
+    toggleSaved: (id) => ipcRenderer.invoke('materials:toggle-saved', id),
+    open: (url) => ipcRenderer.invoke('materials:open', url)
+  },
   bgm: {
     list: () => ipcRenderer.invoke('bgm:list'),
     rescan: () => ipcRenderer.invoke('bgm:rescan'),

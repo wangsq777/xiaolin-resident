@@ -11,7 +11,7 @@ test('默认状态为 leisure，素材就绪时返回对应图', () => {
   assert.equal(result.stateKey, 'leisure');
   assert.equal(result.imageSrc, './assets/character-states/leisure.png');
   assert.equal(result.fallbackUsed, false);
-  assert.equal(result.statusText, '看书');
+  assert.equal(result.statusText, '睇緊書');
 });
 
 test('接受主进程扫描素材时使用的 Set 集合', () => {
@@ -61,7 +61,7 @@ test('优先级：免打扰覆盖提醒与手动状态', () => {
   });
   assert.equal(result.stateKey, 'do_not_disturb');
   assert.equal(result.imageSrc, './assets/character-states/do-not-disturb.png');
-  assert.equal(result.statusText, '安静时段');
+  assert.equal(result.statusText, '唔好打擾');
 });
 
 test('优先级：提醒覆盖手动工作状态', () => {
@@ -72,7 +72,7 @@ test('优先级：提醒覆盖手动工作状态', () => {
   });
   assert.equal(result.stateKey, 'reminder_drink');
   assert.equal(result.imageSrc, './assets/character-states/drinking.png');
-  assert.equal(result.statusText, '该喝水了');
+  assert.equal(result.statusText, '飲啖水先');
 });
 
 test('优先级：happy 覆盖手动状态但不覆盖提醒与免打扰', () => {
@@ -119,7 +119,7 @@ test('sleepActive 在 leisure 时进入 sleeping', () => {
   });
   assert.equal(result.stateKey, 'sleeping');
   assert.equal(result.imageSrc, './assets/character-states/sleeping.png');
-  assert.equal(result.statusText, '休息中');
+  assert.equal(result.statusText, '瞓緊覺');
   assert.equal(result.fallbackUsed, false);
 });
 

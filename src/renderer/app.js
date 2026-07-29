@@ -1,167 +1,134 @@
 (function startApplication() {
   const desktop = window.xiaolinDesktop;
   const elements = collectElements();
-  let library = { directory: '', tracks: [] };
-  let currentTrack = null;
-  let playerState = {
-    hasTracks: false,
-    hasNowPlayingItem: false,
-    isPlaying: false
-  };
   let careConfig = null;
   let unifiedState = null;
-
-  const player = new window.LocalBgmController({
-    onStateChange: handlePlayerState,
-    onNowPlayingChange: handleNowPlaying,
-    onError: (error) => showToast(normalizeError(error), 'error')
-  });
+  let materialSnapshot = { items: [], lastCheckedAt: null, sourceStatuses: [] };
+  let activeFilter = 'all';
 
   bindEvents();
   initialize();
 
   async function initialize() {
     if (!desktop) {
-      showToast('请从 Electron 桌宠中打开本页面。', 'error');
+      showToast('請喺 Electron 桌寵入面開啟呢個頁面。', 'error');
       return;
     }
 
     try {
-      // 先加载关怀设置，决定 BGM 是否启用
       careConfig = await desktop.care.get();
       renderCareSettings();
-
-      // 监听 main 广播的统一状态（角色形象 + 提醒）
       desktop.state.onUpdate(handleStateUpdate);
-
-      // BGM 启用时才加载曲目列表
-      if (careConfig.bgm.enabled) {
-        const snapshot = await desktop.bgm.list();
-        await applyLibrarySnapshot(snapshot, { autoPlayIfIdle: true });
-      } else {
-        // BGM 关闭：不加载列表，直接发布空状态
-        publishPetState();
-      }
+      materialSnapshot = await desktop.materials.get();
+      renderMaterials();
     } catch (error) {
       showToast(normalizeError(error), 'error');
     }
   }
 
   function bindEvents() {
-    // Tab 切换
-    document.querySelectorAll('.tab-btn').forEach((btn) => {
-      btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    document.querySelectorAll('.tab-btn').forEach((button) => {
+      button.addEventListener('click', () => switchTab(button.dataset.tab));
     });
 
-    // BGM 控件
-    elements.openBgmFolderButton?.addEventListener('click', openBgmFolder);
-    elements.rescanBgmButton?.addEventListener('click', rescanBgmFolder);
-    elements.previousButton?.addEventListener('click', () => runPlayerAction(() => player.previous()));
-    elements.playPauseButton?.addEventListener('click', () => runPlayerAction(() => player.togglePlayback()));
-    elements.nextButton?.addEventListener('click', () => runPlayerAction(() => player.next()));
-    desktop?.pet?.onCommand(handlePetCommand);
-    desktop?.bgm?.onChanged(() => refreshAfterFolderChange());
+    elements.quickRefreshMaterials?.addEventListener('click', () => refreshMaterials());
+    elements.refreshMaterialsButton?.addEventListener('click', () => refreshMaterials());
+    document.querySelectorAll('[data-filter]').forEach((button) => {
+      button.addEventListener('click', () => {
+        activeFilter = button.dataset.filter;
+        document.querySelectorAll('[data-filter]').forEach((chip) => chip.classList.toggle('active', chip === button));
+        renderMaterialList();
+      });
+    });
+    elements.materialList?.addEventListener('click', handleMaterialAction);
 
-    // 关怀中心：状态切换
     elements.stateSwitcher?.addEventListener('click', (event) => {
       const button = event.target.closest('[data-state]');
-      if (!button) return;
-      patchCare({ currentState: button.dataset.state });
+      if (button) patchCare({ currentState: button.dataset.state });
     });
 
-    // 喝水提醒设置
-    elements.drinkEnabled?.addEventListener('change', (event) => {
-      patchCare({ reminders: { drink: { enabled: event.target.checked } } });
-    });
-    elements.drinkInterval?.addEventListener('change', (event) => {
-      const value = Number(event.target.value);
-      if (value > 0) patchCare({ reminders: { drink: { intervalMinutes: value } } });
-    });
-    elements.drinkSnooze?.addEventListener('change', (event) => {
-      const value = Number(event.target.value);
-      if (value > 0) patchCare({ reminders: { drink: { snoozeMinutes: value } } });
-    });
+    bindReminder('drink');
+    bindReminder('stretch');
+    bindReminder('eyes');
 
-    // 久坐活动提醒
-    elements.stretchEnabled?.addEventListener('change', (event) => {
-      patchCare({ reminders: { stretch: { enabled: event.target.checked } } });
-    });
-    elements.stretchInterval?.addEventListener('change', (event) => {
-      const value = Number(event.target.value);
-      if (value > 0) patchCare({ reminders: { stretch: { intervalMinutes: value } } });
-    });
-    elements.stretchSnooze?.addEventListener('change', (event) => {
-      const value = Number(event.target.value);
-      if (value > 0) patchCare({ reminders: { stretch: { snoozeMinutes: value } } });
-    });
-
-    // 眼睛休息提醒
-    elements.eyesEnabled?.addEventListener('change', (event) => {
-      patchCare({ reminders: { eyes: { enabled: event.target.checked } } });
-    });
-    elements.eyesInterval?.addEventListener('change', (event) => {
-      const value = Number(event.target.value);
-      if (value > 0) patchCare({ reminders: { eyes: { intervalMinutes: value } } });
-    });
-    elements.eyesSnooze?.addEventListener('change', (event) => {
-      const value = Number(event.target.value);
-      if (value > 0) patchCare({ reminders: { eyes: { snoozeMinutes: value } } });
-    });
-
-    // 安静时段
-    elements.quietEnabled?.addEventListener('change', (event) => {
-      patchCare({ quietHours: { enabled: event.target.checked } });
-    });
-    elements.quietStart?.addEventListener('change', (event) => {
-      patchCare({ quietHours: { start: event.target.value } });
-    });
-    elements.quietEnd?.addEventListener('change', (event) => {
-      patchCare({ quietHours: { end: event.target.value } });
-    });
-
-    // BGM 开关
-    elements.bgmEnabled?.addEventListener('change', async (event) => {
-      const enabled = event.target.checked;
-      await patchCare({ bgm: { enabled } });
-      if (enabled) {
-        // 刚启用：加载曲目
-        try {
-          const snapshot = await desktop.bgm.list();
-          await applyLibrarySnapshot(snapshot, { autoPlayIfIdle: true });
-        } catch (error) {
-          showToast(normalizeError(error), 'error');
-        }
-      } else {
-        // 关闭：停止播放
-        player.setPlaylist([]);
-        renderLibrary();
-        publishPetState();
-      }
-      renderBgmSection();
-    });
-
-    // 鼠标穿透
+    elements.quietEnabled?.addEventListener('change', (event) => patchCare({ quietHours: { enabled: event.target.checked } }));
+    elements.quietStart?.addEventListener('change', (event) => patchCare({ quietHours: { start: event.target.value } }));
+    elements.quietEnd?.addEventListener('change', (event) => patchCare({ quietHours: { end: event.target.value } }));
     elements.clickThroughEnabled?.addEventListener('change', async (event) => {
-      await desktop.care.setClickThrough(event.target.checked);
+      try {
+        careConfig = await desktop.care.setClickThrough(event.target.checked);
+      } catch (error) {
+        showToast(normalizeError(error), 'error');
+      }
     });
   }
 
-  // ============ Tab 切换 ============
+  function bindReminder(type) {
+    elements[`${type}Enabled`]?.addEventListener('change', (event) => {
+      patchCare({ reminders: { [type]: { enabled: event.target.checked } } });
+    });
+    elements[`${type}Interval`]?.addEventListener('change', (event) => {
+      const value = Number(event.target.value);
+      if (value > 0) patchCare({ reminders: { [type]: { intervalMinutes: value } } });
+    });
+    elements[`${type}Snooze`]?.addEventListener('change', (event) => {
+      const value = Number(event.target.value);
+      if (value > 0) patchCare({ reminders: { [type]: { snoozeMinutes: value } } });
+    });
+  }
 
   function switchTab(tabId) {
-    // 更新按钮状态
-    document.querySelectorAll('.tab-btn').forEach((btn) => {
-      const isActive = btn.dataset.tab === tabId;
-      btn.classList.toggle('active', isActive);
-      btn.setAttribute('aria-selected', isActive);
+    document.querySelectorAll('.tab-btn').forEach((button) => {
+      const active = button.dataset.tab === tabId;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-selected', String(active));
     });
-    // 更新面板显隐
     document.querySelectorAll('.tab-panel').forEach((panel) => {
       panel.classList.toggle('active', panel.id === `tab-${tabId}`);
     });
   }
 
-  // ============ 关怀设置 ============
+  async function refreshMaterials() {
+    setRefreshing(true);
+    try {
+      materialSnapshot = await desktop.materials.refresh();
+      renderMaterials();
+      showToast('檢查完成，物料雷達已更新。', 'success');
+    } catch (error) {
+      showToast(normalizeError(error), 'error');
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
+  async function handleMaterialAction(event) {
+    const button = event.target.closest('[data-action]');
+    if (!button) return;
+    const item = materialSnapshot.items.find((entry) => entry.id === button.closest('[data-item-id]')?.dataset.itemId);
+    if (!item) return;
+
+    try {
+      if (button.dataset.action === 'save') {
+        materialSnapshot = await desktop.materials.toggleSaved(item.id);
+        renderMaterials();
+        return;
+      }
+      if (button.dataset.action === 'read') {
+        materialSnapshot = await desktop.materials.markRead(item.id);
+        renderMaterials();
+        return;
+      }
+      if (button.dataset.action === 'open') {
+        await desktop.materials.open(item.url);
+        if (!item.read) {
+          materialSnapshot = await desktop.materials.markRead(item.id);
+          renderMaterials();
+        }
+      }
+    } catch (error) {
+      showToast(normalizeError(error), 'error');
+    }
+  }
 
   async function patchCare(partial) {
     try {
@@ -174,49 +141,23 @@
 
   function renderCareSettings() {
     if (!careConfig) return;
+    elements.stateSwitcher?.querySelectorAll('[data-state]').forEach((button) => {
+      button.classList.toggle('active', button.dataset.state === careConfig.currentState);
+    });
 
-    // 状态切换高亮
-    if (elements.stateSwitcher) {
-      elements.stateSwitcher.querySelectorAll('[data-state]').forEach((button) => {
-        button.classList.toggle('active', button.dataset.state === careConfig.currentState);
-      });
+    for (const type of ['drink', 'stretch', 'eyes']) {
+      const config = careConfig.reminders[type];
+      if (elements[`${type}Enabled`]) elements[`${type}Enabled`].checked = config.enabled;
+      if (elements[`${type}Interval`]) elements[`${type}Interval`].value = config.intervalMinutes;
+      if (elements[`${type}Snooze`]) elements[`${type}Snooze`].value = config.snoozeMinutes;
     }
 
-    // 喝水提醒
-    if (elements.drinkEnabled) elements.drinkEnabled.checked = careConfig.reminders.drink.enabled;
-    if (elements.drinkInterval) elements.drinkInterval.value = careConfig.reminders.drink.intervalMinutes;
-    if (elements.drinkSnooze) elements.drinkSnooze.value = careConfig.reminders.drink.snoozeMinutes;
-
-    // 久坐活动提醒
-    if (elements.stretchEnabled) elements.stretchEnabled.checked = careConfig.reminders.stretch.enabled;
-    if (elements.stretchInterval) elements.stretchInterval.value = careConfig.reminders.stretch.intervalMinutes;
-    if (elements.stretchSnooze) elements.stretchSnooze.value = careConfig.reminders.stretch.snoozeMinutes;
-
-    // 眼睛休息提醒
-    if (elements.eyesEnabled) elements.eyesEnabled.checked = careConfig.reminders.eyes.enabled;
-    if (elements.eyesInterval) elements.eyesInterval.value = careConfig.reminders.eyes.intervalMinutes;
-    if (elements.eyesSnooze) elements.eyesSnooze.value = careConfig.reminders.eyes.snoozeMinutes;
-
-    // 安静时段
     if (elements.quietEnabled) elements.quietEnabled.checked = careConfig.quietHours.enabled;
     if (elements.quietStart) elements.quietStart.value = careConfig.quietHours.start;
     if (elements.quietEnd) elements.quietEnd.value = careConfig.quietHours.end;
-
-    // BGM 开关
-    if (elements.bgmEnabled) elements.bgmEnabled.checked = careConfig.bgm.enabled;
-    renderBgmSection();
-
-    // 鼠标穿透
     if (elements.clickThroughEnabled) elements.clickThroughEnabled.checked = Boolean(careConfig.clickThrough);
   }
 
-  function renderBgmSection() {
-    const enabled = careConfig?.bgm?.enabled;
-    const bgmSection = elements.bgmSection;
-    if (bgmSection) bgmSection.hidden = !enabled;
-  }
-
-  // main 广播的统一状态：更新角色舞台形象 + 今日完成次数
   function handleStateUpdate(state) {
     unifiedState = state;
     renderCharacterStage();
@@ -224,36 +165,25 @@
   }
 
   function renderDailyCount() {
-    if (!unifiedState?.dailyCount) return;
-    const dc = unifiedState.dailyCount;
-    if (elements.drinkCount) elements.drinkCount.textContent = dc.drink || 0;
-    if (elements.stretchCount) elements.stretchCount.textContent = dc.stretch || 0;
-    if (elements.eyesCount) elements.eyesCount.textContent = dc.eyes || 0;
+    const count = unifiedState?.dailyCount;
+    if (!count) return;
+    if (elements.drinkCount) elements.drinkCount.textContent = count.drink || 0;
+    if (elements.stretchCount) elements.stretchCount.textContent = count.stretch || 0;
+    if (elements.eyesCount) elements.eyesCount.textContent = count.eyes || 0;
   }
 
   function renderCharacterStage() {
     if (!unifiedState) return;
-    const img = elements.chibi?.querySelector('img');
-    if (img && unifiedState.character?.imageSrc) {
-      if (img.getAttribute('src') !== unifiedState.character.imageSrc) {
-        img.setAttribute('src', unifiedState.character.imageSrc);
-      }
+    const image = elements.chibi?.querySelector('img');
+    if (image && unifiedState.character?.imageSrc && image.getAttribute('src') !== unifiedState.character.imageSrc) {
+      image.setAttribute('src', unifiedState.character.imageSrc);
     }
-    // 角色动画状态
-    if (elements.chibi) {
-      const stateKey = unifiedState.character?.stateKey || 'default';
-      elements.chibi.classList.toggle('playing', stateKey === 'working' || stateKey === 'reminder_drink');
-      elements.chibi.classList.toggle('idle', !unifiedState.reminder && stateKey !== 'working');
-    }
-    // 角色台词
+    const stateKey = unifiedState.character?.stateKey || 'default';
+    elements.chibi?.classList.toggle('playing', stateKey === 'working' || stateKey === 'reminder_drink');
+    elements.chibi?.classList.toggle('idle', !unifiedState.reminder && stateKey !== 'working');
     if (elements.characterSpeech) {
-      if (unifiedState.reminder) {
-        elements.characterSpeech.textContent = unifiedState.reminder.message;
-      } else {
-        elements.characterSpeech.textContent = unifiedState.statusText || '在这里陪你';
-      }
+      elements.characterSpeech.textContent = unifiedState.reminder?.message || unifiedState.statusText || '我喺度陪你';
     }
-    // 角色形象就绪状态展示
     renderAssetStatus();
   }
 
@@ -262,209 +192,169 @@
     try {
       const assets = await desktop.care.getAssetStatus();
       const labels = {
-        'default.png': '默认',
-        'do-not-disturb.png': '免打扰',
-        'working.png': '工作',
-        'leisure.png': '休闲',
-        'drinking.png': '喝水',
-        'stretching.png': '活动',
-        'eyes-rest.png': '护眼',
-        'sleeping.png': '睡眠',
-        'happy.png': '开心'
+        'default.png': '預設', 'do-not-disturb.png': '唔好打擾', 'working.png': '工作',
+        'leisure.png': '休閒', 'drinking.png': '飲水', 'stretching.png': '郁身',
+        'eyes-rest.png': '護眼', 'sleeping.png': '瞓覺', 'happy.png': '開心'
       };
-      elements.assetStatus.innerHTML = assets.map((a) => {
-        const label = labels[a.file] || a.file;
-        const cls = a.available ? 'asset-ready' : 'asset-missing';
-        return `<span class="asset-chip ${cls}" title="${a.file}">${label}${a.available ? '' : '·缺'}</span>`;
+      elements.assetStatus.innerHTML = assets.map((asset) => {
+        const label = labels[asset.file] || asset.file;
+        return `<span class="asset-chip ${asset.available ? 'asset-ready' : 'asset-missing'}" title="${asset.file}">${label}${asset.available ? '' : '·缺'}</span>`;
       }).join('');
     } catch {
-      // 静默失败
+      // 素材状态不是主流程，读取失败时保持安静。
     }
   }
 
-  // ============ BGM 播放（保留原逻辑） ============
-
-  async function openBgmFolder() {
-    try {
-      await desktop.bgm.openFolder();
-    } catch (error) {
-      showToast(normalizeError(error), 'error');
-    }
+  function renderMaterials() {
+    const items = materialSnapshot.items || [];
+    const unread = items.filter((item) => !item.read).length;
+    const saved = items.filter((item) => item.saved).length;
+    elements.unreadCount.textContent = unread;
+    elements.savedCount.textContent = saved;
+    elements.lastChecked.textContent = formatCheckTime(materialSnapshot.lastCheckedAt);
+    elements.materialBadge.className = `status-badge ${unread > 0 ? 'ready' : 'pending'}`;
+    elements.materialBadgeText.textContent = unread > 0 ? `${unread} 件未讀物料` : '今日已睇晒';
+    elements.feedMeta.textContent = `${items.length} 件公開資料 · ${unread} 件未讀`;
+    renderSourceStatuses();
+    renderMaterialList();
   }
 
-  async function rescanBgmFolder() {
-    setScanning(true);
-    try {
-      const snapshot = await desktop.bgm.rescan();
-      await applyLibrarySnapshot(snapshot, { autoPlayIfIdle: true });
-      showToast(`扫描完成：找到 ${snapshot.tracks.length} 首 BGM。`, 'success');
-    } catch (error) {
-      showToast(normalizeError(error), 'error');
-    } finally {
-      setScanning(false);
-    }
-  }
-
-  async function refreshAfterFolderChange() {
-    try {
-      const snapshot = await desktop.bgm.list();
-      await applyLibrarySnapshot(snapshot, { autoPlayIfIdle: true });
-    } catch (error) {
-      showToast(normalizeError(error), 'error');
-    }
-  }
-
-  async function applyLibrarySnapshot(snapshot, { autoPlayIfIdle }) {
-    library = snapshot;
-    player.setPlaylist(snapshot.tracks);
-    renderLibrary();
-
-    // 仅在 BGM 启用时自动播放
-    if (careConfig?.bgm?.enabled && autoPlayIfIdle && snapshot.tracks.length > 0 && !player.currentTrack()) {
-      await runPlayerAction(() => player.playIndex(0));
-    }
-    publishPetState();
-  }
-
-  function handlePetCommand(command) {
-    if (command === 'previous') runPlayerAction(() => player.previous());
-    if (command === 'toggle') runPlayerAction(() => player.togglePlayback());
-    if (command === 'next') runPlayerAction(() => player.next());
-  }
-
-  async function runPlayerAction(action) {
-    try {
-      await action();
-    } catch (error) {
-      showToast(normalizeError(error), 'error');
-    }
-  }
-
-  function handlePlayerState(nextState) {
-    playerState = { ...playerState, ...nextState };
-    const controlsEnabled = playerState.hasTracks;
-    elements.previousButton.disabled = !controlsEnabled;
-    elements.playPauseButton.disabled = !controlsEnabled;
-    elements.nextButton.disabled = !controlsEnabled;
-    elements.playPauseButton.textContent = playerState.isPlaying ? 'Ⅱ' : '▶';
-    elements.playerStatus.textContent = playerState.isPlaying
-      ? 'BGM 播放中'
-      : playerState.hasNowPlayingItem
-        ? '暂停中'
-        : playerState.hasTracks
-          ? '准备播放'
-          : '等待 BGM';
-    renderTrackSelection();
-    publishPetState();
-  }
-
-  function handleNowPlaying(track) {
-    currentTrack = track;
-    elements.trackTitle.textContent = track?.title || '还没有播放歌曲';
-    elements.trackArtist.textContent = track?.artist || '将音频放进项目的 BGM 文件夹';
-    renderTrackSelection();
-    publishPetState();
-  }
-
-  function renderLibrary() {
-    const trackCount = library.tracks.length;
-    elements.libraryTitle.textContent = trackCount > 0
-      ? `已找到 ${trackCount} 首 BGM`
-      : '还没有找到 BGM';
-    elements.bgmFolderPath.textContent = library.directory;
-    elements.libraryBadge.className = `status-badge ${trackCount > 0 ? 'ready' : 'pending'}`;
-    elements.libraryBadgeText.textContent = trackCount > 0 ? `${trackCount} 首 BGM` : '等待放歌';
-    elements.emptyLibrary.classList.toggle('hidden', trackCount > 0);
-    elements.bgmLibrary.replaceChildren();
-
+  function renderSourceStatuses() {
+    elements.sourceStatusList.replaceChildren();
     const fragment = document.createDocumentFragment();
-    library.tracks.forEach((track, index) => {
-      fragment.append(createTrackRow(track, index));
+    (materialSnapshot.sourceStatuses || []).forEach((source) => {
+      const row = document.createElement('div');
+      row.className = 'source-status-row';
+      const dot = document.createElement('span');
+      dot.className = `source-dot ${source.status}`;
+      const label = document.createElement('strong');
+      label.textContent = source.label;
+      const detail = document.createElement('small');
+      detail.textContent = source.detail;
+      const status = document.createElement('span');
+      status.className = `source-status-label ${source.status}`;
+      status.textContent = source.status === 'ready' ? '已連線' : source.status === 'error' ? '需留意' : '待接入';
+      row.append(dot, label, detail, status);
+      fragment.append(row);
     });
-    elements.bgmLibrary.append(fragment);
-    renderTrackSelection();
+    elements.sourceStatusList.append(fragment);
   }
 
-  function createTrackRow(track, index) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'local-track-row';
-    button.dataset.trackId = track.id;
-
-    const number = document.createElement('span');
-    number.className = 'local-track-number';
-    number.textContent = String(index + 1).padStart(2, '0');
-
-    const copy = document.createElement('span');
-    copy.className = 'local-track-copy';
-    const title = document.createElement('strong');
-    title.textContent = track.title;
-    const artist = document.createElement('small');
-    artist.textContent = track.artist;
-    copy.append(title, artist);
-
-    const icon = document.createElement('span');
-    icon.className = 'local-track-play';
-    icon.textContent = '▶';
-    button.append(number, copy, icon);
-    button.addEventListener('click', () => runPlayerAction(() => player.playIndex(index)));
-    return button;
+  function renderMaterialList() {
+    const visibleItems = (materialSnapshot.items || []).filter(matchesFilter);
+    elements.materialList.replaceChildren();
+    elements.emptyMaterials.hidden = visibleItems.length > 0;
+    const fragment = document.createDocumentFragment();
+    visibleItems.forEach((item) => fragment.append(createMaterialCard(item)));
+    elements.materialList.append(fragment);
   }
 
-  function renderTrackSelection() {
-    document.querySelectorAll('.local-track-row').forEach((row) => {
-      const selected = row.dataset.trackId === currentTrack?.id;
-      row.classList.toggle('selected', selected);
-      row.setAttribute('aria-current', selected ? 'true' : 'false');
-      const icon = row.querySelector('.local-track-play');
-      if (icon) icon.textContent = selected && playerState.isPlaying ? 'Ⅱ' : '▶';
-    });
+  function matchesFilter(item) {
+    if (activeFilter === 'unread') return !item.read;
+    if (activeFilter === 'saved') return item.saved;
+    if (['合作', '活動', '物料'].includes(activeFilter)) return item.type === activeFilter;
+    return true;
   }
 
-  // 主窗只上报 BGM 部分，关怀部分由 main 统一广播
-  function publishPetState() {
-    desktop?.pet?.publishState({
-      hasTracks: library.tracks.length > 0,
-      hasNowPlayingItem: playerState.hasNowPlayingItem,
-      isPlaying: playerState.isPlaying,
-      title: currentTrack?.title || (library.tracks.length > 0 ? '本地 BGM 已准备好' : 'BGM 文件夹还是空的'),
-      artist: currentTrack?.artist || (library.tracks.length > 0 ? `${library.tracks.length} 首歌已就绪` : '右键打开关怀中心')
-    });
+  function createMaterialCard(item) {
+    const article = document.createElement('article');
+    article.className = `material-item ${item.read ? 'read' : 'unread'} accent-${item.accent || 'lilac'}`;
+    article.dataset.itemId = item.id;
+
+    const visual = document.createElement('div');
+    visual.className = 'material-visual';
+    visual.innerHTML = `<span>${getTypeMark(item.type)}</span><small>${item.type}</small>`;
+
+    const content = document.createElement('div');
+    content.className = 'material-item-content';
+    const top = document.createElement('div');
+    top.className = 'material-item-top';
+    const meta = document.createElement('span');
+    meta.className = 'material-type';
+    meta.textContent = item.type;
+    const official = document.createElement('span');
+    official.className = 'official-badge';
+    official.textContent = item.official ? '官方來源' : '待確認';
+    top.append(meta, official);
+
+    const title = document.createElement('h3');
+    title.textContent = item.title;
+    const summary = document.createElement('p');
+    summary.textContent = item.summary;
+    const footer = document.createElement('div');
+    footer.className = 'material-item-footer';
+    const source = document.createElement('span');
+    source.textContent = `${item.source} · ${formatPublishedAt(item.publishedAt)}`;
+    const actions = document.createElement('div');
+    actions.className = 'material-item-actions';
+
+    const readButton = document.createElement('button');
+    readButton.type = 'button';
+    readButton.className = 'material-read-action';
+    readButton.dataset.action = 'read';
+    readButton.textContent = item.read ? '已讀' : '標記已讀';
+    readButton.disabled = item.read;
+
+    const saveButton = document.createElement('button');
+    saveButton.type = 'button';
+    saveButton.className = `material-save-button ${item.saved ? 'saved' : ''}`;
+    saveButton.dataset.action = 'save';
+    saveButton.setAttribute('aria-label', item.saved ? '取消收藏' : '收藏物料');
+    saveButton.textContent = item.saved ? '★' : '☆';
+
+    const openButton = document.createElement('button');
+    openButton.type = 'button';
+    openButton.className = 'material-open-button';
+    openButton.dataset.action = 'open';
+    openButton.textContent = '查看來源 ↗';
+    actions.append(readButton, saveButton, openButton);
+    footer.append(source, actions);
+    content.append(top, title, summary, footer);
+    article.append(visual, content);
+    return article;
   }
 
-  function setScanning(scanning) {
-    elements.rescanBgmButton.disabled = scanning;
-    elements.rescanBgmButton.textContent = scanning ? '扫描中…' : '重新扫描';
+  function getTypeMark(type) {
+    return ({ 合作: '✦', 活動: '◌', 物料: '▧', 資訊: 'i' })[type] || '✦';
+  }
+
+  function setRefreshing(refreshing) {
+    elements.refreshMaterialsButton.disabled = refreshing;
+    elements.quickRefreshMaterials.disabled = refreshing;
+    elements.refreshMaterialsButton.textContent = refreshing ? '檢查緊…' : '立即檢查';
+  }
+
+  function formatCheckTime(value) {
+    if (!value) return '未檢查';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '未檢查';
+    return new Intl.DateTimeFormat('zh-HK', { hour: '2-digit', minute: '2-digit' }).format(date);
+  }
+
+  function formatPublishedAt(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '剛剛';
+    return new Intl.DateTimeFormat('zh-HK', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(date);
   }
 
   function showToast(message, type = 'info') {
     elements.toast.textContent = message;
     elements.toast.className = `toast ${type}`;
-    window.setTimeout(() => {
-      elements.toast.className = 'toast hidden';
-    }, 5000);
+    window.clearTimeout(showToast.timer);
+    showToast.timer = window.setTimeout(() => { elements.toast.className = 'toast hidden'; }, 5000);
   }
 
   function normalizeError(error) {
     return error?.message?.replace(/^Error invoking remote method '[^']+': Error: /, '')
-      || '发生了一个没有礼貌的错误。';
+      || '發生咗一個唔係幾有禮貌嘅錯誤。';
   }
 
   function collectElements() {
     const ids = [
-      // BGM 原有
-      'libraryBadge', 'libraryBadgeText', 'musicNotes', 'chibi', 'characterSpeech',
-      'playerStatus', 'trackTitle', 'trackArtist', 'previousButton', 'playPauseButton',
-      'nextButton', 'libraryTitle', 'bgmFolderPath', 'openBgmFolderButton',
-      'rescanBgmButton', 'emptyLibrary', 'bgmLibrary', 'toast',
-      // 关怀中心
-      'careCenter', 'stateSwitcher', 'drinkReminderCard',
-      'drinkEnabled', 'drinkInterval', 'drinkSnooze',
-      'stretchEnabled', 'stretchInterval', 'stretchSnooze',
-      'eyesEnabled', 'eyesInterval', 'eyesSnooze',
-      'quietEnabled', 'quietStart', 'quietEnd',
-      'bgmEnabled', 'bgmSection', 'assetStatus', 'clickThroughEnabled',
-      // 今日提醒记录
+      'careCenter', 'materialBadge', 'materialBadgeText', 'quickRefreshMaterials', 'chibi', 'characterSpeech', 'assetStatus',
+      'unreadCount', 'savedCount', 'lastChecked', 'sourceStatusList', 'feedMeta', 'refreshMaterialsButton', 'materialList', 'emptyMaterials', 'toast',
+      'stateSwitcher', 'drinkReminderCard', 'drinkEnabled', 'drinkInterval', 'drinkSnooze', 'stretchEnabled', 'stretchInterval', 'stretchSnooze',
+      'eyesEnabled', 'eyesInterval', 'eyesSnooze', 'quietEnabled', 'quietStart', 'quietEnd', 'clickThroughEnabled',
       'drinkCount', 'stretchCount', 'eyesCount'
     ];
     return Object.fromEntries(ids.map((id) => [id, document.getElementById(id)]));

@@ -11,9 +11,9 @@ const REMINDER_TYPES = ['drink', 'stretch', 'eyes'];
 // 默认提醒文案：从本地配置文件加载，失败时回退到内置文案。
 // 任务文档 §P1：提醒文案本地配置文件，用户可自行编辑。
 const FALLBACK_MESSAGES = {
-  drink: ['忙归忙，先喝一点水。'],
-  stretch: ['坐得有点久了，起来活动一下。'],
-  eyes: ['看屏幕很久了，望望远处吧。']
+  drink: ['忙都要飲啖水喎。'],
+  stretch: ['坐咗一陣喇，起身郁吓啦。'],
+  eyes: ['望咗個螢幕咁耐，抬頭望吓遠處啦。']
 };
 
 let cachedMessages = null;
@@ -81,11 +81,13 @@ class ReminderScheduler {
   }
 
   /**
-   * 用关怀设置重置调度器状态。
-   * 保留未处理的 activeReminder；重算每类提醒的下次到期。
+   * 用关怀设置同步调度器状态。
+   * 保留未处理的 activeReminder 和已有提醒倒计时；首次启用、重新启用
+   * 或修改间隔时，重新计算对应提醒的下次到期时间。
    * dailyCount 日期变更时自动重置（任务文档 §9：新的一天重置）。
    */
   setConfig({ reminders = {}, quietHours = {}, dailySkip = {}, dailyCount } = {}) {
+    const previousReminders = this.reminders || {};
     this.reminders = reminders;
     this.quietHours = quietHours;
     this.dailySkip = dailySkip || {};
@@ -103,7 +105,9 @@ class ReminderScheduler {
       this.dailyCount = { date: today, drink: 0, stretch: 0, eyes: 0 };
     }
 
-    // 重算 nextDue：每次 setConfig 都重新计算，确保间隔变更立即生效
+    // 仅在首次启用、重新启用或间隔发生变化时计算 nextDue。
+    // 关怀设置写回（例如保存 dailyCount）也会调用 setConfig，不能因此
+    // 重置其他提醒已有的倒计时，否则短间隔提醒会一直推迟长间隔提醒。
     const now = this.now();
     for (const type of REMINDER_TYPES) {
       const cfg = this.reminders[type];
@@ -111,9 +115,18 @@ class ReminderScheduler {
         delete this.nextDue[type];
         continue;
       }
-      const next = computeNextDue(cfg, now);
-      if (next) this.nextDue[type] = next;
-      else delete this.nextDue[type];
+
+      const previous = previousReminders[type];
+      const wasEnabled = Boolean(previous?.enabled);
+      const intervalChanged = Number(previous?.intervalMinutes) !== Number(cfg.intervalMinutes);
+      const existing = this.nextDue[type];
+      const hasValidNextDue = existing instanceof Date && Number.isFinite(existing.getTime());
+
+      if (!wasEnabled || intervalChanged || !hasValidNextDue) {
+        const next = computeNextDue(cfg, now);
+        if (next) this.nextDue[type] = next;
+        else delete this.nextDue[type];
+      }
     }
   }
 

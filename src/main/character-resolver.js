@@ -34,15 +34,15 @@ const STATE_IMAGE_MAP = {
 
 // 状态简短文字（pet 窗状态行 + 主窗角色舞台共用）
 const STATE_TEXT_MAP = {
-  default: '在这里陪你',
-  do_not_disturb: '安静时段',
-  working: '工作中',
-  leisure: '看书',
-  reminder_drink: '该喝水了',
-  reminder_stretch: '活动一下',
-  reminder_eyes: '看看远处',
-  sleeping: '休息中',
-  happy: '做得好'
+  default: '我喺度陪你',
+  do_not_disturb: '唔好打擾',
+  working: '工作緊',
+  leisure: '睇緊書',
+  reminder_drink: '飲啖水先',
+  reminder_stretch: '起身郁吓',
+  reminder_eyes: '望吓遠處',
+  sleeping: '瞓緊覺',
+  happy: '叻喎'
 };
 
 const DEFAULT_IMAGE = 'default.png';

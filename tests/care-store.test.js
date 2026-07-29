@@ -42,6 +42,18 @@ test('patch 深合并并持久化', async (context) => {
   assert.equal(config.reminders.drink.snoozeMinutes, 10); // 未改
 });
 
+test('并发 patch 也会按顺序合并，避免开关和间隔互相覆盖', async (context) => {
+  const store = await makeStore(context);
+  await Promise.all([
+    store.patch({ reminders: { stretch: { enabled: true } } }),
+    store.patch({ reminders: { stretch: { intervalMinutes: 2 } } })
+  ]);
+
+  const config = await store.getAll();
+  assert.equal(config.reminders.stretch.enabled, true);
+  assert.equal(config.reminders.stretch.intervalMinutes, 2);
+});
+
 test('patch 忽略白名单外的未知键', async (context) => {
   const store = await makeStore(context);
   await store.patch({

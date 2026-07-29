@@ -10,5 +10,6 @@ contextBridge.exposeInMainWorld('xiaolinPet', {
     return () => ipcRenderer.removeListener('pet:state', handler);
   },
   // 处理提醒：complete / snooze / skipToday
-  reminderAction: ({ type, action }) => ipcRenderer.invoke('care:reminder-action', { type, action })
+  reminderAction: ({ type, action }) => ipcRenderer.invoke('care:reminder-action', { type, action }),
+  setBgmExpanded: (expanded) => ipcRenderer.send('pet:bgm-expanded', Boolean(expanded))
 });

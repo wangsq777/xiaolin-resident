@@ -82,6 +82,7 @@ class CareStore {
     this.configPath = path.join(userDataPath, 'care-settings.json');
     this._cache = null;
     this._listeners = new Set();
+    this._mutationQueue = Promise.resolve();
   }
 
   /**
@@ -104,23 +105,34 @@ class CareStore {
    * @returns {Promise<object>} 写入后的完整设置
    */
   async patch(partial = {}) {
-    const current = await this.getAll();
-    const next = this.applyPatch(current, partial);
-    await this.writeRaw(next);
-    this._cache = next;
-    this._notify(next);
-    return next;
+    return this.enqueueMutation(async () => {
+      const current = await this.getAll();
+      const next = this.applyPatch(current, partial);
+      await this.writeRaw(next);
+      this._cache = next;
+      this._notify(next);
+      return next;
+    });
   }
 
   /**
    * 重置为默认值。
    */
   async reset() {
-    const next = structuredClone(DEFAULTS);
-    await this.writeRaw(next);
-    this._cache = next;
-    this._notify(next);
-    return next;
+    return this.enqueueMutation(async () => {
+      const next = structuredClone(DEFAULTS);
+      await this.writeRaw(next);
+      this._cache = next;
+      this._notify(next);
+      return next;
+    });
+  }
+
+  enqueueMutation(operation) {
+    const result = this._mutationQueue.then(operation);
+    // 后续操作必须继续执行，即使前一个操作失败；当前调用仍会收到原始错误。
+    this._mutationQueue = result.catch(() => {});
+    return result;
   }
 
   /**

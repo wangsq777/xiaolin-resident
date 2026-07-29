@@ -1,15 +1,14 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-Hant">
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' xiaolin-bgm:;"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self';"
     >
-    <title>小林驻留中 · 关怀中心</title>
+    <title>小林駐留中 · 物料雷達</title>
     <link rel="stylesheet" href="./styles.css">
-    <script src="./local-bgm-controller.js" defer></script>
     <script src="./app.js" defer></script>
   </head>
   <body>
@@ -19,250 +18,125 @@
     <main id="careCenter" class="app-shell">
       <header class="topbar">
         <div>
-          <p class="eyebrow">CARE COMPANION · DESKTOP PET</p>
-          <h1>小林驻留中</h1>
+          <p class="eyebrow">OFFICIAL MATERIAL RADAR · DESKTOP PET</p>
+          <h1>小林駐留中</h1>
         </div>
-
         <div class="topbar-actions">
-          <div id="libraryBadge" class="status-badge pending">
+          <div id="materialBadge" class="status-badge pending">
             <span class="status-dot"></span>
-            <span id="libraryBadgeText">加载中</span>
+            <span id="materialBadgeText">載入緊物料</span>
           </div>
+          <button id="quickRefreshMaterials" class="icon-button" type="button" aria-label="立即檢查物料">↻</button>
         </div>
       </header>
 
       <section class="hero-grid">
-        <section class="character-stage" aria-label="小林状态区域">
-          <div id="musicNotes" class="music-notes" aria-hidden="true">
-            <span>♪</span><span>♫</span><span>♩</span>
-          </div>
-
-          <div id="chibi" class="chibi pixel-chibi idle" role="img" aria-label="像素风小林">
+        <section class="character-stage" aria-label="小林狀態區域">
+          <div class="radar-decoration radar-decoration-one" aria-hidden="true">OFFICIAL<br><span>WATCH</span></div>
+          <div class="radar-decoration radar-decoration-two" aria-hidden="true">NEW<br><span>DROP</span></div>
+          <div id="chibi" class="chibi pixel-chibi idle" role="img" aria-label="像素風小林">
             <img src="./assets/character-states/default.png" alt="" draggable="false">
           </div>
-
-          <div id="characterSpeech" class="speech">在这里陪你。</div>
-          <div id="assetStatus" class="asset-status" aria-label="素材就绪状态"></div>
+          <div id="characterSpeech" class="speech">有新聯名，我幫你先留低。</div>
+          <div id="assetStatus" class="asset-status" aria-label="素材就緒狀態"></div>
         </section>
 
         <section class="player-column">
-          <!-- Tab 导航栏 -->
-          <nav class="tab-nav" role="tablist" aria-label="功能分类">
-            <button type="button" class="tab-btn active" role="tab" aria-selected="true" data-tab="reminders" id="tabBtn-reminders">
+          <nav class="tab-nav" role="tablist" aria-label="功能分類">
+            <button type="button" class="tab-btn active" role="tab" aria-selected="true" data-tab="materials" id="tabBtn-materials">
+              <span class="tab-icon">✦</span> 物料雷達
+            </button>
+            <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="reminders" id="tabBtn-reminders">
               <span class="tab-icon">⏰</span> 提醒
             </button>
-            <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="bgm" id="tabBtn-bgm">
-              <span class="tab-icon">🎵</span> BGM
-            </button>
             <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="settings" id="tabBtn-settings">
-              <span class="tab-icon">⚙️</span> 设置
+              <span class="tab-icon">⚙️</span> 設定
             </button>
           </nav>
 
-          <!-- ============ Tab: 提醒 ============ -->
-          <div class="tab-panel active" id="tab-reminders" role="tabpanel" aria-labelledby="tabBtn-reminders">
+          <div class="tab-panel active" id="tab-materials" role="tabpanel" aria-labelledby="tabBtn-materials">
             <div class="tab-scroll">
-
-              <!-- 当前状态 -->
-              <article class="glass-card care-card card-compact">
-                <header class="care-card-header">
-                  <h2>当前状态</h2>
-                  <p class="eyebrow">桌宠形象会跟着变化</p>
-                </header>
-                <div id="stateSwitcher" class="state-switcher" role="radiogroup" aria-label="状态切换">
-                  <button type="button" class="state-option" data-state="leisure">休闲</button>
-                  <button type="button" class="state-option" data-state="working">工作</button>
-                  <button type="button" class="state-option" data-state="do_not_disturb">免打扰</button>
+              <article class="glass-card material-hero-card">
+                <div class="material-hero-copy">
+                  <p class="eyebrow">DAILY WATCH · HONG KONG</p>
+                  <h2>有新聯名，我幫你先留低。</h2>
+                  <p>集中收好林家謙的官方合作、活動同公開物料。每日自動檢查，有新嘢就唔使再周圍搵。</p>
                 </div>
+                <div class="radar-mark" aria-hidden="true"><span></span><i></i><b>✦</b></div>
               </article>
 
-              <!-- 喝水提醒 -->
-              <article id="drinkReminderCard" class="glass-card care-card">
-                <header class="care-card-header">
-                  <h2>喝水提醒</h2>
-                  <label class="switch">
-                    <input id="drinkEnabled" type="checkbox">
-                    <span class="switch-track"></span>
-                  </label>
-                </header>
-                <div class="care-fields">
-                  <label class="care-field">
-                    <span>间隔（分钟）</span>
-                    <input id="drinkInterval" type="number" min="1" max="480" step="5">
-                  </label>
-                  <label class="care-field">
-                    <span>稍后（分钟）</span>
-                    <input id="drinkSnooze" type="number" min="1" max="120" step="1">
-                  </label>
-                </div>
-              </article>
-
-              <!-- 久坐活动提醒 -->
-              <article id="stretchReminderCard" class="glass-card care-card">
-                <header class="care-card-header">
-                  <h2>久坐活动提醒</h2>
-                  <label class="switch">
-                    <input id="stretchEnabled" type="checkbox">
-                    <span class="switch-track"></span>
-                  </label>
-                </header>
-                <div class="care-fields">
-                  <label class="care-field">
-                    <span>间隔（分钟）</span>
-                    <input id="stretchInterval" type="number" min="1" max="480" step="5">
-                  </label>
-                  <label class="care-field">
-                    <span>稍后（分钟）</span>
-                    <input id="stretchSnooze" type="number" min="1" max="120" step="1">
-                  </label>
-                </div>
-              </article>
-
-              <!-- 眼睛休息提醒 -->
-              <article id="eyesReminderCard" class="glass-card care-card">
-                <header class="care-card-header">
-                  <h2>眼睛休息提醒</h2>
-                  <label class="switch">
-                    <input id="eyesEnabled" type="checkbox">
-                    <span class="switch-track"></span>
-                  </label>
-                </header>
-                <div class="care-fields">
-                  <label class="care-field">
-                    <span>间隔（分钟）</span>
-                    <input id="eyesInterval" type="number" min="1" max="480" step="5">
-                  </label>
-                  <label class="care-field">
-                    <span>稍后（分钟）</span>
-                    <input id="eyesSnooze" type="number" min="1" max="120" step="1">
-                  </label>
-                </div>
-              </article>
-
-              <!-- 今日提醒记录 -->
-              <article class="glass-card care-card">
-                <header class="care-card-header">
-                  <h2>今日提醒记录</h2>
-                </header>
-                <div class="daily-count">
-                  <span class="count-chip"><span id="drinkCount">0</span> 次喝水</span>
-                  <span class="count-chip"><span id="stretchCount">0</span> 次活动</span>
-                  <span class="count-chip"><span id="eyesCount">0</span> 次护眼</span>
-                </div>
-              </article>
-
-              <!-- 安静时段 -->
-              <article class="glass-card care-card">
-                <header class="care-card-header">
-                  <h2>安静时段</h2>
-                  <label class="switch">
-                    <input id="quietEnabled" type="checkbox">
-                    <span class="switch-track"></span>
-                  </label>
-                </header>
-                <div class="care-fields">
-                  <label class="care-field">
-                    <span>开始</span>
-                    <input id="quietStart" type="time">
-                  </label>
-                  <label class="care-field">
-                    <span>结束</span>
-                    <input id="quietEnd" type="time">
-                  </label>
-                </div>
-                <p class="care-hint">安静时段内不弹出普通提醒，结束后也不补发。</p>
-              </article>
-
-            </div><!-- /tab-scroll -->
-          </div><!-- /tab-reminders -->
-
-          <!-- ============ Tab: BGM ============ -->
-          <div class="tab-panel" id="tab-bgm" role="tabpanel" aria-labelledby="tabBtn-bgm">
-            <div class="tab-scroll">
-
-              <!-- BGM 开关 -->
-              <article class="glass-card care-card">
-                <header class="care-card-header">
-                  <h2>BGM 氛围音乐</h2>
-                  <label class="switch">
-                    <input id="bgmEnabled" type="checkbox">
-                    <span class="switch-track"></span>
-                  </label>
-                </header>
-                <p class="care-hint">关闭时桌宠只做陪伴与提醒；启用后才显示音乐控制。</p>
-              </article>
-
-              <!-- BGM 区块（启用时才显示） -->
-              <div id="bgmSection" class="bgm-section" hidden>
-                <article class="glass-card now-playing-card">
-                  <div id="artwork" class="artwork-placeholder" aria-label="本地 BGM">♪</div>
-                  <div class="track-copy">
-                    <p id="playerStatus" class="eyebrow">等待 BGM</p>
-                    <h2 id="trackTitle">还没有播放歌曲</h2>
-                    <p id="trackArtist">将音频放进项目的 BGM 文件夹</p>
-                  </div>
-
-                  <div class="player-controls">
-                    <button id="previousButton" type="button" aria-label="上一首" disabled>⏮</button>
-                    <button id="playPauseButton" class="primary-control" type="button" aria-label="播放或暂停" disabled>▶</button>
-                    <button id="nextButton" type="button" aria-label="下一首" disabled>⏭</button>
-                  </div>
-                </article>
-
-                <article class="glass-card local-library-card">
-                  <header class="library-toolbar">
-                    <div>
-                      <p class="eyebrow">本地 BGM 文件夹</p>
-                      <h2 id="libraryTitle">等待扫描</h2>
-                      <p id="bgmFolderPath" class="library-path"></p>
-                    </div>
-                    <div class="library-actions">
-                      <button id="openBgmFolderButton" class="quiet-button" type="button">打开文件夹</button>
-                      <button id="rescanBgmButton" class="primary-button" type="button">重新扫描</button>
-                    </div>
-                  </header>
-
-                  <div id="emptyLibrary" class="empty-library">
-                    <span aria-hidden="true">♫</span>
-                    <h3>BGM 文件夹还没有歌曲</h3>
-                    <p>放入 MP3、M4A、AAC、WAV、FLAC、OGG 或 OPUS 文件。音频只在本机播放，不需要任何开发者会员。</p>
-                    <small>推荐文件名：林家谦 - 歌名.mp3</small>
-                  </div>
-
-                  <div id="bgmLibrary" class="local-track-list" aria-live="polite"></div>
-                </article>
+              <div class="material-stats" aria-label="物料統計">
+                <article class="glass-card stat-card"><span class="stat-label">未讀物料</span><strong id="unreadCount">—</strong><small>等你睇</small></article>
+                <article class="glass-card stat-card"><span class="stat-label">已收藏</span><strong id="savedCount">—</strong><small>之後慢慢搵</small></article>
+                <article class="glass-card stat-card"><span class="stat-label">上次檢查</span><strong id="lastChecked">—</strong><small>每日自動更新</small></article>
               </div>
 
-            </div><!-- /tab-scroll -->
-          </div><!-- /tab-bgm -->
+              <article class="glass-card source-card">
+                <header class="material-section-header">
+                  <div><p class="eyebrow">WATCHLIST</p><h2>來源狀態</h2></div>
+                  <span class="source-note">官方來源優先</span>
+                </header>
+                <div id="sourceStatusList" class="source-status-list" aria-live="polite"></div>
+                <p class="care-hint source-disclaimer">X 等平台會先經官方 API／授權 feed 取得；唔會喺桌寵入面儲存登入資料。</p>
+              </article>
 
-          <!-- ============ Tab: 设置 ============ -->
+              <article class="glass-card material-feed-card">
+                <header class="material-section-header material-feed-toolbar">
+                  <div><p class="eyebrow">LATEST FINDS</p><h2>最近發現</h2><p id="feedMeta" class="section-meta">整理緊公開資料</p></div>
+                  <button id="refreshMaterialsButton" class="primary-button" type="button">立即檢查</button>
+                </header>
+                <div class="filter-row" role="toolbar" aria-label="物料篩選">
+                  <button class="filter-chip active" type="button" data-filter="all">全部</button>
+                  <button class="filter-chip" type="button" data-filter="unread">未讀</button>
+                  <button class="filter-chip" type="button" data-filter="saved">收藏</button>
+                  <button class="filter-chip" type="button" data-filter="合作">合作</button>
+                  <button class="filter-chip" type="button" data-filter="活動">活動</button>
+                  <button class="filter-chip" type="button" data-filter="物料">物料</button>
+                </div>
+                <div id="materialList" class="material-list" aria-live="polite"></div>
+                <div id="emptyMaterials" class="empty-materials" hidden>
+                  <span aria-hidden="true">✦</span>
+                  <h3>呢個篩選暫時冇物料</h3>
+                  <p>之後有新合作或活動，我會幫你放返入嚟。</p>
+                </div>
+              </article>
+            </div>
+          </div>
+
+          <div class="tab-panel" id="tab-reminders" role="tabpanel" aria-labelledby="tabBtn-reminders">
+            <div class="tab-scroll">
+              <article class="glass-card care-card card-compact">
+                <header class="care-card-header"><h2>而家狀態</h2><p class="eyebrow">桌寵個樣會跟住變</p></header>
+                <div id="stateSwitcher" class="state-switcher" role="radiogroup" aria-label="狀態切換">
+                  <button type="button" class="state-option" data-state="leisure">休閒</button>
+                  <button type="button" class="state-option" data-state="working">工作</button>
+                  <button type="button" class="state-option" data-state="do_not_disturb">唔好打擾</button>
+                </div>
+              </article>
+
+              <article id="drinkReminderCard" class="glass-card care-card">
+                <header class="care-card-header"><h2>飲水提醒</h2><label class="switch"><input id="drinkEnabled" type="checkbox"><span class="switch-track"></span></label></header>
+                <div class="care-fields"><label class="care-field"><span>相隔（分鐘）</span><input id="drinkInterval" type="number" min="1" max="480" step="5"></label><label class="care-field"><span>陣間再提（分鐘）</span><input id="drinkSnooze" type="number" min="1" max="120" step="1"></label></div>
+              </article>
+              <article id="stretchReminderCard" class="glass-card care-card">
+                <header class="care-card-header"><h2>坐耐咗提醒</h2><label class="switch"><input id="stretchEnabled" type="checkbox"><span class="switch-track"></span></label></header>
+                <div class="care-fields"><label class="care-field"><span>相隔（分鐘）</span><input id="stretchInterval" type="number" min="1" max="480" step="5"></label><label class="care-field"><span>陣間再提（分鐘）</span><input id="stretchSnooze" type="number" min="1" max="120" step="1"></label></div>
+              </article>
+              <article id="eyesReminderCard" class="glass-card care-card">
+                <header class="care-card-header"><h2>眼睛休息提醒</h2><label class="switch"><input id="eyesEnabled" type="checkbox"><span class="switch-track"></span></label></header>
+                <div class="care-fields"><label class="care-field"><span>相隔（分鐘）</span><input id="eyesInterval" type="number" min="1" max="480" step="5"></label><label class="care-field"><span>陣間再提（分鐘）</span><input id="eyesSnooze" type="number" min="1" max="120" step="1"></label></div>
+              </article>
+              <article class="glass-card care-card"><header class="care-card-header"><h2>今日提醒紀錄</h2></header><div class="daily-count"><span class="count-chip"><span id="drinkCount">0</span> 次飲水</span><span class="count-chip"><span id="stretchCount">0</span> 次郁身</span><span class="count-chip"><span id="eyesCount">0</span> 次護眼</span></div></article>
+              <article class="glass-card care-card"><header class="care-card-header"><h2>安靜時段</h2><label class="switch"><input id="quietEnabled" type="checkbox"><span class="switch-track"></span></label></header><div class="care-fields"><label class="care-field"><span>開始</span><input id="quietStart" type="time"></label><label class="care-field"><span>結束</span><input id="quietEnd" type="time"></label></div><p class="care-hint">安靜時段內唔會彈出一般提醒，完咗之後亦唔會補返。</p></article>
+            </div>
+          </div>
+
           <div class="tab-panel" id="tab-settings" role="tabpanel" aria-labelledby="tabBtn-settings">
             <div class="tab-scroll">
-
-              <!-- 鼠标穿透 -->
-              <article class="glass-card care-card">
-                <header class="care-card-header">
-                  <h2>鼠标穿透</h2>
-                  <label class="switch">
-                    <input id="clickThroughEnabled" type="checkbox">
-                    <span class="switch-track"></span>
-                  </label>
-                </header>
-                <p class="care-hint">开启后桌宠窗口不响应鼠标事件，方便放在工作区边缘。</p>
-              </article>
-
-              <!-- 关于 -->
-              <article class="glass-card care-card">
-                <header class="care-card-header">
-                  <h2>关于小林驻留中</h2>
-                </header>
-                <p class="care-hint" style="margin:0;">v0.4 · 关怀型桌宠</p>
-                <p class="care-hint" style="margin-top:6px;">所有数据保存在本机，不上传任何信息。桌宠不依赖网络或音乐平台账号。</p>
-              </article>
-
-            </div><!-- /tab-scroll -->
-          </div><!-- /tab-settings -->
+              <article class="glass-card care-card"><header class="care-card-header"><h2>滑鼠穿透</h2><label class="switch"><input id="clickThroughEnabled" type="checkbox"><span class="switch-track"></span></label></header><p class="care-hint">開啟後桌寵視窗唔會回應滑鼠，放喺工作區邊位會方便啲。</p></article>
+              <article class="glass-card care-card"><header class="care-card-header"><h2>關於物料雷達</h2></header><p class="care-hint" style="margin:0;">v0.5 · 林家謙官方物料與資訊收藏</p><p class="care-hint" style="margin-top:6px;">資料會保存在本機。真實來源建議接官方 API 或有授權的 feed，唔需要喺桌寵內登入 X。</p></article>
+            </div>
+          </div>
 
           <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
         </section>

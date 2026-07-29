@@ -15,7 +15,7 @@
       this.audio.addEventListener('ended', () => this.next());
       this.audio.addEventListener('error', () => {
         const code = this.audio.error?.code;
-        this.onError?.(new Error(`这首 BGM 无法播放${code ? `（错误 ${code}）` : ''}。`));
+        this.onError?.(new Error(`呢首 BGM 播放唔到${code ? `（錯誤 ${code}）` : ''}。`));
         this.emitState();
       });
     }

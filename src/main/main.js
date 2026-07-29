@@ -26,6 +26,7 @@ const { CareStore } = require('./care-store');
 const { ReminderScheduler } = require('./reminder-scheduler');
 const { isQuietNow } = require('./quiet-hours');
 const { resolveCharacter, listKnownStateImages } = require('./character-resolver');
+const { MaterialFeedStore } = require('./material-feed');
 
 protocol.registerSchemesAsPrivileged([{
   scheme: 'xiaolin-bgm',
@@ -47,10 +48,17 @@ let bgmChangeTimer;
 let isQuitting = false;
 let tray = null;
 
+const PET_LAYOUTS = {
+  daily: { width: 280, height: 220 },
+  reminder: { width: 440, height: 230 }
+};
+
 // 关怀模块实例（app.whenReady 后初始化）
 let careStore;
+let materialFeedStore;
 let scheduler;
 let schedulerTimer;
+let materialRefreshTimer;
 
 // 睡眠状态
 let sleepActive = false;
@@ -64,12 +72,15 @@ let careConfig = null;
 let availableAssets = new Set();
 let activeReminder = null;     // { type, message, dueAt } | null
 let happyUntil = null;          // happy 短暂态的结束时间戳，null 表示非 happy
+let petLayoutMode = 'daily';
+let petBgmExpanded = false;
+let petBgmCollapsedWhilePlaying = false;
 let lastBgmState = {
   hasTracks: false,
   isPlaying: false,
   hasNowPlayingItem: false,
-  title: 'BGM 文件夹还是空的',
-  artist: '右键打开主页面查看说明'
+    title: 'BGM 資料夾仲係空嘅',
+    artist: '右擊開啟關懷中心睇吓'
 };
 
 function createMainWindow({ showOnReady = true } = {}) {
@@ -78,7 +89,7 @@ function createMainWindow({ showOnReady = true } = {}) {
     height: 760,
     minWidth: 820,
     minHeight: 680,
-    title: '小林驻留中 · BGM 管理',
+    title: '小林駐留中 · 物料雷達',
     backgroundColor: '#11131d',
     show: false,
     webPreferences: {
@@ -113,12 +124,8 @@ function createMainWindow({ showOnReady = true } = {}) {
 
 function createPetWindow() {
   petWindow = new BrowserWindow({
-    width: 500,
-    height: 210,
-    minWidth: 500,
-    minHeight: 210,
-    maxWidth: 500,
-    maxHeight: 210,
+    width: PET_LAYOUTS.daily.width,
+    height: PET_LAYOUTS.daily.height,
     frame: false,
     transparent: true,
     resizable: false,
@@ -127,7 +134,7 @@ function createPetWindow() {
     skipTaskbar: true,
     hasShadow: false,
     show: false,
-    title: '小林驻留中 · 桌宠 BGM',
+    title: '小林駐留中 · 桌寵',
     backgroundColor: '#00000000',
     webPreferences: {
       preload: path.join(__dirname, '..', 'preload', 'pet-preload.js'),
@@ -191,14 +198,18 @@ function createPetWindow() {
 
   petWindow.webContents.on('context-menu', () => {
     const template = [
-      { label: '打开关怀中心', click: showMainWindow }
+      { label: '開啟關懷中心', click: showMainWindow },
+      {
+        label: '快速切換狀態',
+        submenu: [
+          { label: '休閒', type: 'radio', checked: careConfig?.currentState === 'leisure', click: () => setPetManualState('leisure') },
+          { label: '工作', type: 'radio', checked: careConfig?.currentState === 'working', click: () => setPetManualState('working') },
+          { label: '唔好打擾', type: 'radio', checked: careConfig?.currentState === 'do_not_disturb', click: () => setPetManualState('do_not_disturb') }
+        ]
+      }
     ];
-    // BGM 启用时才提供文件夹入口
-    if (careConfig?.bgm?.enabled) {
-      template.push({ label: '打开 BGM 文件夹', click: openBgmDirectory });
-    }
     template.push({ type: 'separator' });
-    template.push({ label: '退出小林驻留中', click: () => app.quit() });
+    template.push({ label: '退出小林駐留中', click: () => app.quit() });
     Menu.buildFromTemplate(template).popup({ window: petWindow });
   });
 
@@ -218,13 +229,13 @@ function createTray() {
   }
 
   tray = new Tray(icon);
-  tray.setToolTip('小林驻留中');
+  tray.setToolTip('小林駐留中');
 
   const updateTrayMenu = () => {
-    const clickThroughLabel = careConfig?.clickThrough ? '✓ 鼠标穿透' : '  鼠标穿透';
+    const clickThroughLabel = careConfig?.clickThrough ? '✓ 滑鼠穿透' : '  滑鼠穿透';
     const contextMenu = Menu.buildFromTemplate([
-      { label: '打开关怀中心', click: showMainWindow },
-      { label: '显示桌宠', click: () => {
+      { label: '開啟關懷中心', click: showMainWindow },
+      { label: '顯示桌寵', click: () => {
         if (petWindow && !petWindow.isDestroyed()) {
           petWindow.showInactive();
           petWindow.focus();
@@ -240,7 +251,7 @@ function createTray() {
         }
       }},
       { type: 'separator' },
-      { label: '退出小林驻留中', click: () => app.quit() }
+      { label: '退出小林駐留中', click: () => app.quit() }
     ]);
     tray.setContextMenu(contextMenu);
   };
@@ -270,12 +281,46 @@ function showMainWindow() {
   mainWindow.focus();
 }
 
+function setPetManualState(state) {
+  careStore?.patch({ currentState: state }).catch(() => {});
+}
+
+function getPetLayoutMode() {
+  if (activeReminder) return 'reminder';
+  return 'daily';
+}
+
+function updatePetWindowLayout() {
+  if (!petWindow || petWindow.isDestroyed()) return;
+
+  const mode = getPetLayoutMode();
+  const { width, height } = PET_LAYOUTS[mode];
+  petLayoutMode = mode;
+
+  const [currentWidth, currentHeight] = petWindow.getSize();
+  if (currentWidth === width && currentHeight === height) return;
+
+  const [x, y] = petWindow.getPosition();
+  petWindow.setSize(width, height);
+
+  // 优先向右展开；靠近屏幕右边缘时，只把窗口左移必要的距离。
+  try {
+    const display = screen.getDisplayNearestPoint({ x, y });
+    const { workArea } = display;
+    const maxX = workArea.x + workArea.width - width;
+    const nextX = Math.min(Math.max(x, workArea.x), maxX);
+    if (nextX !== x) petWindow.setPosition(nextX, y);
+  } catch {
+    // 屏幕信息暂不可用时保留原位置，不影响布局切换。
+  }
+}
+
 function sanitizeBgmState(input = {}) {
   return {
     hasTracks: Boolean(input.hasTracks),
     isPlaying: Boolean(input.isPlaying),
     hasNowPlayingItem: Boolean(input.hasNowPlayingItem),
-    title: String(input.title || '还没有播放 BGM').slice(0, 160),
+    title: String(input.title || '未有播放 BGM').slice(0, 160),
     artist: String(input.artist || '本地 BGM').slice(0, 160)
   };
 }
@@ -341,6 +386,8 @@ function buildUnifiedState() {
     },
     statusText,
     sleepActive,
+    petLayout: petLayoutMode,
+    bgmExpanded: petBgmExpanded,
     reminder: activeReminder ? {
       type: activeReminder.type,
       message: activeReminder.message,
@@ -380,7 +427,7 @@ async function getLibrarySnapshot() {
 async function openBgmDirectory() {
   await ensureBgmDirectory(bgmDirectory);
   const error = await shell.openPath(bgmDirectory);
-  if (error) throw new Error(`无法打开 BGM 文件夹：${error}`);
+    if (error) throw new Error(`開唔到 BGM 資料夾：${error}`);
 }
 
 function registerBgmProtocol() {
@@ -403,10 +450,36 @@ function registerIpcHandlers() {
   });
   ipcMain.handle('bgm:open-folder', () => openBgmDirectory());
 
+  // 物料雷達：资料快照、刷新、已读和收藏状态。
+  ipcMain.handle('materials:get', () => materialFeedStore.getSnapshot());
+  ipcMain.handle('materials:refresh', () => materialFeedStore.refresh());
+  ipcMain.handle('materials:mark-read', (_event, id) => materialFeedStore.markRead(id));
+  ipcMain.handle('materials:toggle-saved', (_event, id) => materialFeedStore.toggleSaved(id));
+  ipcMain.handle('materials:open', async (_event, url) => {
+    try {
+      const parsed = new URL(String(url || ''));
+      if (!['http:', 'https:'].includes(parsed.protocol)) return false;
+      await shell.openExternal(parsed.toString());
+      return true;
+    } catch {
+      return false;
+    }
+  });
+
   // 主窗上报 BGM 播放状态（仅 BGM 部分），合并后统一广播
   ipcMain.on('pet:state', (event, input) => {
     if (!mainWindow || event.sender !== mainWindow.webContents) return;
     lastBgmState = sanitizeBgmState(input);
+    if (!lastBgmState.isPlaying) petBgmCollapsedWhilePlaying = false;
+    updatePetWindowLayout();
+    broadcastState();
+  });
+
+  ipcMain.on('pet:bgm-expanded', (event, expanded) => {
+    if (!petWindow || event.sender !== petWindow.webContents) return;
+    petBgmExpanded = Boolean(expanded);
+    petBgmCollapsedWhilePlaying = Boolean(lastBgmState.isPlaying && !petBgmExpanded);
+    updatePetWindowLayout();
     broadcastState();
   });
 
@@ -430,12 +503,16 @@ function registerIpcHandlers() {
   ipcMain.handle('care:patch', async (_event, partial) => {
     careConfig = await careStore.patch(partial);
     applyCareConfig();
+    updatePetWindowLayout();
     broadcastState();
     return careConfig;
   });
   ipcMain.handle('care:reset', async () => {
     careConfig = await careStore.reset();
     applyCareConfig();
+    petBgmExpanded = false;
+    petBgmCollapsedWhilePlaying = false;
+    updatePetWindowLayout();
     broadcastState();
     return careConfig;
   });
@@ -457,9 +534,11 @@ function registerIpcHandlers() {
       happyUntil = Date.now() + 8000; // 8 秒 happy 态
       setTimeout(() => {
         happyUntil = null;
+        updatePetWindowLayout();
         broadcastState();
       }, 8000);
     }
+    updatePetWindowLayout();
     broadcastState();
     return scheduler.getSnapshot();
   });
@@ -512,17 +591,15 @@ async function runSmokeCaptureIfRequested() {
     await fsPromises.mkdir(path.dirname(capturePath), { recursive: true });
 
     const mainState = await mainWindow.webContents.executeJavaScript(`(() => {
-      // 切换到 BGM 标签页，使 BGM 面板可见
-      document.querySelectorAll('.tab-btn').forEach((btn) => {
-        if (btn.dataset.tab === 'bgm') btn.click();
-      });
       return {
         title: document.title,
-        isLocalBgmPage: Boolean(document.getElementById('bgmLibrary')),
-        hasOpenFolderButton: Boolean(document.getElementById('openBgmFolderButton')),
-        hasRescanButton: Boolean(document.getElementById('rescanBgmButton')),
+        hasMaterialRadar: Boolean(document.getElementById('materialList')),
+        hasMaterialFilters: document.querySelectorAll('[data-filter]').length >= 6,
+        hasSourceStatusList: Boolean(document.getElementById('sourceStatusList')),
+        hasRefreshButton: Boolean(document.getElementById('refreshMaterialsButton')),
+        hasNoMusicPlayer: !document.getElementById('bgmLibrary') && !document.getElementById('previousButton'),
+        visibleMaterialRows: document.querySelectorAll('.material-item').length,
         pixelChibiLoaded: Boolean(document.querySelector('.pixel-chibi img')?.complete && document.querySelector('.pixel-chibi img').naturalWidth > 0),
-        visibleTrackRows: document.querySelectorAll('.local-track-row').length,
         hasCareCenter: Boolean(document.getElementById('careCenter')),
         hasStateSwitcher: Boolean(document.getElementById('stateSwitcher')),
         hasDrinkReminderCard: Boolean(document.getElementById('drinkReminderCard')),
@@ -532,7 +609,7 @@ async function runSmokeCaptureIfRequested() {
         hasClickThroughToggle: Boolean(document.getElementById('clickThroughEnabled')),
         hasTabNav: Boolean(document.querySelector('.tab-nav')),
         hasTabReminders: Boolean(document.getElementById('tabBtn-reminders')),
-        hasTabBgm: Boolean(document.getElementById('tabBtn-bgm')),
+        hasTabMaterials: Boolean(document.getElementById('tabBtn-materials')),
         hasTabSettings: Boolean(document.getElementById('tabBtn-settings'))
       };
     })()`);
@@ -564,32 +641,18 @@ async function runSmokeCaptureIfRequested() {
 
     // 截图保持默认休闲状态。
     careConfig = await careStore.patch({ currentState: 'leisure' });
-    // 注入假 BGM 播放态并启用 BGM，用于截图
-    careConfig = await careStore.patch({ bgm: { enabled: true } });
-    lastBgmState = sanitizeBgmState({
-      hasTracks: true,
-      isPlaying: true,
-      hasNowPlayingItem: true,
-      title: '一人之境',
-      artist: '林家谦 · 本地 BGM'
-    });
-    broadcastState();
-    await new Promise((resolve) => setTimeout(resolve, 250));
-
     const petState = await petWindow.webContents.executeJavaScript(`(() => {
       const character = document.querySelector('.pet-character img');
-      const controls = [...document.querySelectorAll('.pet-controls button')];
       const reminderBubble = document.getElementById('reminderBubble');
       return {
         petTitle: document.title,
         petCharacterLoaded: Boolean(character?.complete && character.naturalWidth > 0),
         petCharacterSrc: character?.getAttribute('src'),
-        petControlsCount: controls.length,
-        petControlsEnabled: controls.every((button) => !button.disabled),
+        petHasNoMusicControls: document.querySelectorAll('.pet-controls button').length === 0,
         petStatus: document.getElementById('petStatus')?.textContent,
         petAnimation: getComputedStyle(document.getElementById('petCharacter')).animationName,
         reminderBubbleExists: Boolean(reminderBubble),
-        bgmControlsVisible: Boolean(document.getElementById('bgmControls') && !document.getElementById('bgmControls').hidden)
+        bgmControlsVisible: Boolean(document.getElementById('bgmControls'))
       };
     })()`);
     const extension = path.extname(capturePath) || '.png';
@@ -619,17 +682,20 @@ app.whenReady().then(async () => {
 
   // 初始化关怀模块
   careStore = new CareStore({ userDataPath: app.getPath('userData') });
+  materialFeedStore = new MaterialFeedStore({ userDataPath: app.getPath('userData') });
   careConfig = await careStore.getAll();
+  await materialFeedStore.refresh().catch(() => {});
   availableAssets = await scanCharacterAssets();
 
   scheduler = new ReminderScheduler({
     now: () => new Date(),
     onDue: (reminder) => {
       activeReminder = reminder;
+      updatePetWindowLayout();
       broadcastState();
       // 弹出系统通知
       const notification = new Notification({
-        title: '小林驻留中',
+        title: '小林駐留中',
         body: reminder.message,
         silent: false
       });
@@ -643,28 +709,32 @@ app.whenReady().then(async () => {
   careStore.onChange((config) => {
     careConfig = config;
     applyCareConfig();
+    updatePetWindowLayout();
     broadcastState();
   });
 
   const tracks = await listBgmTracks(bgmDirectory);
   lastBgmState = sanitizeBgmState({
     hasTracks: tracks.length > 0,
-    title: tracks.length > 0 ? '准备播放本地 BGM' : 'BGM 文件夹还是空的',
-    artist: tracks.length > 0 ? `${tracks.length} 首歌已就绪` : '右键打开关怀中心'
+    title: tracks.length > 0 ? '準備播放本地 BGM' : 'BGM 資料夾仲係空嘅',
+    artist: tracks.length > 0 ? `${tracks.length} 首歌已就緒` : '右擊開啟關懷中心'
   });
 
   createPetWindow();
   createTray();
   setupSleepDetection();
-  // 启动时主窗显隐：BGM 启用且有歌时只显示桌宠小窗（延续 v0.3 体验）；
-  // BGM 关闭（默认）或无歌时显示关怀中心，便于用户配置关怀功能。
-  const showMainOnReady = careConfig.bgm.enabled
-    ? tracks.length === 0
-    : true;
+  // 物料雷达是主窗口的核心入口，启动后直接显示关怀中心。
+  const showMainOnReady = true;
   createMainWindow({
     showOnReady: showMainOnReady || Boolean(process.env.XIAOLIN_SMOKE_CAPTURE)
   });
   watchBgmDirectory();
+
+  // 每天自动检查一次。没有配置远端 feed 时会保留本地示例数据，
+  // 配置 XIAOLIN_MATERIAL_FEED_URL 后再由 feed 聚合器提供真实来源。
+  materialRefreshTimer = setInterval(() => {
+    materialFeedStore.refresh().catch(() => {});
+  }, 24 * 60 * 60 * 1000);
 
   app.on('activate', () => {
     if (!petWindow || petWindow.isDestroyed()) createPetWindow();
@@ -761,6 +831,7 @@ app.on('before-quit', () => {
   isQuitting = true;
   clearTimeout(bgmChangeTimer);
   clearInterval(schedulerTimer);
+  clearInterval(materialRefreshTimer);
   bgmWatcher?.close();
 });
 
