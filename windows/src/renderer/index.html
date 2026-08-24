@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self';"
+    >
+    <title>小林駐留中 · 動態巡邏站</title>
+    <link rel="stylesheet" href="./styles.css">
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+
+    <main id="careCenter" class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">SOCIAL PATROL · DESKTOP PET</p>
+          <h1>小林駐留中</h1>
+        </div>
+        <div class="topbar-actions">
+          <div class="status-badge ready">
+            <span class="status-dot"></span>
+            <span>2 個平台已就緒</span>
+          </div>
+        </div>
+      </header>
+
+      <section class="hero-grid">
+        <section class="character-stage" aria-label="小林狀態區域">
+          <div class="radar-decoration radar-decoration-one" aria-hidden="true">OFFICIAL<br><span>WATCH</span></div>
+          <div class="radar-decoration radar-decoration-two" aria-hidden="true">NEW<br><span>DROP</span></div>
+          <div id="chibi" class="chibi pixel-chibi idle" role="img" aria-label="像素風小林">
+            <img src="./assets/character-states/default.png" alt="" draggable="false">
+          </div>
+          <div id="characterSpeech" class="speech">有新聯名，我幫你先留低。</div>
+        </section>
+
+        <section class="player-column">
+          <nav class="tab-nav" role="tablist" aria-label="功能分類">
+            <button type="button" class="tab-btn active" role="tab" aria-selected="true" data-tab="patrol" id="tabBtn-patrol">
+              <span class="tab-icon">✦</span> 動態巡邏站
+            </button>
+            <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="reminders" id="tabBtn-reminders">
+              <span class="tab-icon">⏰</span> 提醒
+            </button>
+            <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="settings" id="tabBtn-settings">
+              <span class="tab-icon">⚙️</span> 設定
+            </button>
+          </nav>
+
+          <div class="tab-panel active" id="tab-patrol" role="tabpanel" aria-labelledby="tabBtn-patrol">
+            <div class="tab-scroll">
+              <article class="glass-card material-hero-card">
+                <div class="material-hero-copy">
+                  <p class="eyebrow">SOCIAL PATROL · HONG KONG</p>
+                  <h2>今日想去邊度巡邏？</h2>
+                  <p>我陪你去林家謙的官方 Instagram 同 Threads 主頁。唔會自動抓取，動態由你親自發現。</p>
+                </div>
+                <div class="radar-mark" aria-hidden="true"><span></span><i></i><b>✦</b></div>
+              </article>
+
+              <div class="material-stats" aria-label="巡邏記錄">
+                <article class="glass-card stat-card"><span class="stat-label">Instagram</span><strong id="instagramLastPatrol">未巡邏</strong><small>上次出發</small></article>
+                <article class="glass-card stat-card"><span class="stat-label">Threads</span><strong id="threadsLastPatrol">未巡邏</strong><small>上次出發</small></article>
+                <article class="glass-card stat-card"><span class="stat-label">今日巡邏</span><strong id="todayPatrolCount">0</strong><small>次</small></article>
+              </div>
+
+              <section id="patrolStation" class="social-platform-grid" aria-label="林家謙社交平台入口">
+                <article class="glass-card social-platform-card instagram-card">
+                  <div class="social-platform-icon" aria-hidden="true">◎</div>
+                  <div class="social-platform-copy">
+                    <p class="eyebrow">PHOTOS · REELS · STORIES</p>
+                    <h2>Instagram</h2>
+                    <p>@terencelam0903</p>
+                  </div>
+                  <button id="openInstagramButton" class="social-open-button instagram-button" type="button" data-platform="instagram">
+                    去 Instagram 巡邏 <span aria-hidden="true">↗</span>
+                  </button>
+                </article>
+
+                <article class="glass-card social-platform-card threads-card">
+                  <div class="social-platform-icon threads-icon" aria-hidden="true">@</div>
+                  <div class="social-platform-copy">
+                    <p class="eyebrow">THOUGHTS · UPDATES · CHAT</p>
+                    <h2>Threads</h2>
+                    <p>@terencelam0903</p>
+                  </div>
+                  <button id="openThreadsButton" class="social-open-button threads-button" type="button" data-platform="threads">
+                    去 Threads 巡邏 <span aria-hidden="true">↗</span>
+                  </button>
+                </article>
+              </section>
+
+              <article class="glass-card patrol-note-card">
+                <span aria-hidden="true">✦</span>
+                <div><h2>由你親自巡邏</h2><p>兩個入口都會用系統瀏覽器打開官方公開主頁。桌寵只記低巡邏時間，唔會保存登入資料或讀取帖子內容。</p></div>
+              </article>
+            </div>
+          </div>
+
+          <div class="tab-panel" id="tab-reminders" role="tabpanel" aria-labelledby="tabBtn-reminders">
+            <div class="tab-scroll">
+              <article class="glass-card care-card card-compact">
+                <header class="care-card-header"><h2>而家狀態</h2><p class="eyebrow">桌寵個樣會跟住變</p></header>
+                <div id="stateSwitcher" class="state-switcher" role="radiogroup" aria-label="狀態切換">
+                  <button type="button" class="state-option" data-state="leisure">休息</button>
+                  <button type="button" class="state-option" data-state="working">工作</button>
+                  <button type="button" class="state-option" data-state="sad">傷心</button>
+                  <button type="button" class="state-option" data-state="slacking">摸魚</button>
+                  <button type="button" class="state-option" data-state="do_not_disturb">唔好打擾</button>
+                </div>
+              </article>
+
+              <article id="drinkReminderCard" class="glass-card care-card">
+                <header class="care-card-header"><h2>飲水提醒</h2><label class="switch"><input id="drinkEnabled" type="checkbox"><span class="switch-track"></span></label></header>
+                <div class="care-fields"><label class="care-field"><span>相隔（分鐘）</span><input id="drinkInterval" type="number" min="1" max="480" step="5"></label><label class="care-field"><span>陣間再提（分鐘）</span><input id="drinkSnooze" type="number" min="1" max="120" step="1"></label></div>
+              </article>
+              <article id="stretchReminderCard" class="glass-card care-card">
+                <header class="care-card-header"><h2>坐耐咗提醒</h2><label class="switch"><input id="stretchEnabled" type="checkbox"><span class="switch-track"></span></label></header>
+                <div class="care-fields"><label class="care-field"><span>相隔（分鐘）</span><input id="stretchInterval" type="number" min="1" max="480" step="5"></label><label class="care-field"><span>陣間再提（分鐘）</span><input id="stretchSnooze" type="number" min="1" max="120" step="1"></label></div>
+              </article>
+              <article id="eyesReminderCard" class="glass-card care-card">
+                <header class="care-card-header"><h2>眼睛休息提醒</h2><label class="switch"><input id="eyesEnabled" type="checkbox"><span class="switch-track"></span></label></header>
+                <div class="care-fields"><label class="care-field"><span>相隔（分鐘）</span><input id="eyesInterval" type="number" min="1" max="480" step="5"></label><label class="care-field"><span>陣間再提（分鐘）</span><input id="eyesSnooze" type="number" min="1" max="120" step="1"></label></div>
+              </article>
+              <article class="glass-card care-card"><header class="care-card-header"><h2>今日提醒紀錄</h2></header><div class="daily-count"><span class="count-chip"><span id="drinkCount">0</span> 次飲水</span><span class="count-chip"><span id="stretchCount">0</span> 次郁身</span><span class="count-chip"><span id="eyesCount">0</span> 次護眼</span></div></article>
+              <article class="glass-card care-card"><header class="care-card-header"><h2>安靜時段</h2><label class="switch"><input id="quietEnabled" type="checkbox"><span class="switch-track"></span></label></header><div class="care-fields"><label class="care-field"><span>開始</span><input id="quietStart" type="time"></label><label class="care-field"><span>結束</span><input id="quietEnd" type="time"></label></div><p class="care-hint">安靜時段內唔會彈出一般提醒，完咗之後亦唔會補返。</p></article>
+            </div>
+          </div>
+
+          <div class="tab-panel" id="tab-settings" role="tabpanel" aria-labelledby="tabBtn-settings">
+            <div class="tab-scroll">
+              <article class="glass-card care-card"><header class="care-card-header"><h2>滑鼠穿透</h2><label class="switch"><input id="clickThroughEnabled" type="checkbox"><span class="switch-track"></span></label></header><p class="care-hint">開啟後桌寵視窗唔會回應滑鼠，放喺工作區邊位會方便啲。</p></article>
+              <article class="glass-card care-card"><header class="care-card-header"><h2>關於動態巡邏站</h2></header><p class="care-hint" style="margin:0;">v0.6 · 林家謙 Instagram／Threads 官方入口</p><p class="care-hint" style="margin-top:6px;">巡邏記錄只保存在本機；桌寵唔會自動抓取社交平台內容，亦唔會保存登入資料。</p></article>
+            </div>
+          </div>
+
+          <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>

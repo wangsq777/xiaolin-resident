@@ -1,0 +1,16 @@
+{
+  "name": "xiaolin-resident",
+  "version": "0.6.0",
+  "private": true,
+  "description": "带 Instagram 与 Threads 动态巡逻入口的跨平台关怀桌宠（Electron）",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "check": "node --check src/main/main.js && node --check src/main/bgm-library.js && node --check src/main/config-store.js && node --check src/main/care-store.js && node --check src/main/quiet-hours.js && node --check src/main/reminder-scheduler.js && node --check src/main/character-resolver.js && node --check src/main/social-profiles.js && node --check src/preload/preload.js && node --check src/preload/pet-preload.js && node --check src/renderer/app.js && node --check src/renderer/local-bgm-controller.js && node --check src/renderer/pet.js && node --check Scripts/smoke-electron.js",
+    "test": "node --test tests/bgm-library.test.js tests/quiet-hours.test.js tests/character-resolver.test.js tests/reminder-scheduler.test.js tests/care-store.test.js tests/material-feed.test.js tests/social-profiles.test.js",
+    "smoke:ui": "node Scripts/smoke-electron.js"
+  },
+  "devDependencies": {
+    "electron": "^38.0.0"
+  }
+}

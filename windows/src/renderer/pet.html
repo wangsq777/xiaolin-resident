@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self';">
+    <title>小林駐留中 · 桌寵</title>
+    <link rel="stylesheet" href="./pet.css">
+    <script src="./pet.js" defer></script>
+  </head>
+  <body>
+    <main id="petShell" class="pet-shell idle" data-layout="daily" data-state="leisure" title="拖動可以移動；雙擊角色開啟關懷中心">
+      <div id="petCharacter" class="pet-character" role="img" aria-label="像素風小林">
+        <img src="./assets/character-states/default.png" alt="" draggable="false">
+      </div>
+
+      <div id="statusPill" class="status-pill">
+        <span id="petStatus">休息緊</span>
+      </div>
+
+      <section id="reminderBubble" class="reminder-bubble" aria-label="關懷提醒" hidden>
+        <p id="reminderMessage" class="reminder-message">忙都要飲啖水喎。</p>
+        <div class="reminder-actions">
+          <button id="reminderComplete" class="reminder-action primary" type="button">飲過喇</button>
+          <div class="reminder-secondary-actions">
+            <button id="reminderSnooze" class="reminder-action" type="button">10 分鐘後先</button>
+            <button id="reminderSkip" class="reminder-action" type="button">今日唔再提</button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </body>
+</html>

@@ -1,0 +1,52 @@
+{
+  "name": "xiaolin-resident",
+  "version": "0.6.0",
+  "private": true,
+  "description": "带 Instagram 与 Threads 动态巡逻入口的 Windows 关怀桌宠（Electron）",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "check": "node --check src/main/main.js && node --check src/main/bgm-library.js && node --check src/main/config-store.js && node --check src/main/care-store.js && node --check src/main/quiet-hours.js && node --check src/main/reminder-scheduler.js && node --check src/main/character-resolver.js && node --check src/main/social-profiles.js && node --check src/preload/preload.js && node --check src/preload/pet-preload.js && node --check src/renderer/app.js && node --check src/renderer/local-bgm-controller.js && node --check src/renderer/pet.js && node --check Scripts/smoke-electron.js",
+    "test": "node --test tests/bgm-library.test.js tests/quiet-hours.test.js tests/character-resolver.test.js tests/reminder-scheduler.test.js tests/care-store.test.js tests/material-feed.test.js tests/social-profiles.test.js",
+    "smoke:ui": "node Scripts/smoke-electron.js",
+    "build:win": "electron-builder --win nsis --x64",
+    "build:win:portable": "electron-builder --win portable --x64"
+  },
+  "devDependencies": {
+    "electron": "39.8.10",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.xiaolin.resident",
+    "productName": "小林驻留中",
+    "asar": true,
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "BGM/**/*",
+      "package.json"
+    ],
+    "win": {
+      "icon": "build/icon.png",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "Xiaolin-Resident-${version}-Windows-${arch}.${ext}",
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "小林驻留中"
+    }
+  }
+}
